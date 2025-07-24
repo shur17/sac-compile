@@ -74,6 +74,11 @@ function check()
 {
   echo "Starting check build sac environment ..."
 
+  if [ ! -d $path/src ]; then
+    echo "ERROR: Directory 'src' does not exist."
+    exit 1
+  fi
+
   # install default JDK
   if [[ ! -f $LOCAL_JDK_URL_INFO_FILE_PATH || ! -f $LOCAL_JDK_INSTALL_FILE_PATH || ! -d $LOCAL_JDK_INSTALL_DIR ]]; then
     echo "install default JDK from ${JDK_REPOSITORY_URL} ..."
@@ -399,6 +404,7 @@ function compile_backend()
 # compile frontend
 function compile_frontend()
 {
+  test -d $path/src/web/node_modules || cp -R $path/thirdparty/web/node_modules $path/src/web/node_modules
   cd $path/src/web
   chmod u+x ./node_modules/.bin/*
   chmod u+x ./node_modules/@esbuild/linux-x64/bin/*
