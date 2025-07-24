@@ -1,0 +1,18 @@
+spring:
+  # 公共配置文件
+  profiles:
+    include: common
+# SequoiaDB数据库配置
+monitor-threadpool:
+  # 线程池核心线程数
+  corePoolSize: 15
+  # 线程池最大线程数
+  maximumPoolSize: 30
+  keepAliveTime: 500
+task:
+  createChildCollection: 0 0 3 * * ?
+cache:
+  defaultTime: 600000
+# 游标查询时，数据库服务端返回的每批次的最大文档数量
+cursor:
+  batchSize: 1000

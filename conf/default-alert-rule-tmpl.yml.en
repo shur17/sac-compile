@@ -1,0 +1,668 @@
+rules:
+  ####################################### SQL ##########################################
+  - name: "SQL_Too_Many_Aborted_Connects"
+    desc: "The server has interrupted the connection too many times."
+    scope: "cluster"
+    eval_metric: "SQL_Aborted_Connects_5m"
+    eval_rules:
+      - operator: ">"
+        threshold: 10
+        severity: 1
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Instance ${alert_target} has interrupted the connection on the server too many times."
+    description_tmpl: "Instance ${alert_target} has interrupted the connection on the server too many times, more than ${alert_threshold} within 5 minutes, currently ${alert_value}."
+
+  - name: "SQL_Too_Many_Aborted_Clients"
+    desc: "Too many connections aborted due to client not closing the connection properly."
+    scope: "cluster"
+    eval_metric: "SQL_Aborted_Clients_5m"
+    eval_rules:
+      - operator: ">"
+        threshold: 10
+        severity: 1
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Too many connections aborted for the ${alert_target} instance due to client not closing the connection properly."
+    description_tmpl: "Too many connections aborted for the ${alert_target} instance due to client not closing the connection properly, more than ${alert_threshold} within 5 minutes, currently ${alert_value}."
+
+  - name: "SQL_Too_Many_Threads_Connects"
+    desc: "Too many open connections."
+    scope: "cluster"
+    eval_metric: "SQL_Threads_Connects_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 80
+        severity: 2
+        fire_duration: 120
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Too many open connections for instance ${alert_target}"
+    description_tmpl: "The number of connections to instance ${alert_target} exceeds ${alert_threshold}% of the max_connections(${alert_labels.max_connections}) for ${alert_duration} seconds, currently ${alert_labels.threads_connected}."
+
+  - name: "SQL_Too_Many_Threads_Running"
+    desc: "Too many threads running."
+    scope: "cluster"
+    eval_metric: "SQL_Threads_Running"
+    eval_rules:
+      - operator: ">"
+        threshold: 300
+        severity: 2
+        fire_duration: 120
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Too many threads running on instance ${alert_target}."
+    description_tmpl: "The number of threads running on instance ${alert_target} exceeds ${alert_threshold} for ${alert_duration} seconds, currently ${alert_value}."
+
+  - name: "SQL_Too_Many_New_Threads_Running"
+    desc: "Too many new running threads added."
+    scope: "cluster"
+    eval_metric: "SQL_Threads_Running_5m"
+    eval_rules:
+      - operator: ">"
+        threshold: 50
+        severity: 2
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Too many new running threads added to instance ${alert_target}."
+    description_tmpl: "Too many new running threads added to instance ${alert_target}, more than ${alert_threshold} within 5 minutes, currently ${alert_value}."
+
+  - name: "SQL_Too_Many_Opened_Files"
+    desc: "Too many files opened by SQL instance."
+    scope: "cluster"
+    eval_metric: "SQL_Opened_Files_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 80
+        severity: 2
+        fire_duration: 120
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Too many files opened by ${alert_target} instance."
+    description_tmpl: "The number of files opened by ${alert_target} exceeds ${alert_threshold}% of the open_files_limit(${alert_labels.open_files_limit}) for ${alert_duration} seconds, currently ${alert_labels.open_files}"
+
+  - name: "SQL_Error_Instance"
+    desc: "SQL instance error."
+    scope: "cluster"
+    eval_metric: "SQL_Error_Instance"
+    eval_rules:
+      - severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} instance error."
+    description_tmpl: "${alert_target} instance error, Flag:${alert_labels.flag}, Detail:${alert_labels.detail}"
+
+  ####################################### SDB ##########################################
+  - name: "SDB_Error_Node"
+    desc: "SequoiaDB node error."
+    scope: "cluster"
+    eval_metric: "SDB_Error_Node"
+    eval_rules:
+      - severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} node error."
+    description_tmpl: "${alert_target} node error, Flag:${alert_labels.flag}, Detail:${alert_labels.detail}"
+
+  - name: "SDB_Node_Status"
+    desc: "SequoiaDB node status is abnormal."
+    scope: "cluster"
+    eval_metric: "SDB_Node_Status"
+    eval_rules:
+      - operator: "=="
+        threshold: "FullSync"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "Rebuilding"
+        severity: 2
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} node status is abnormal."
+    description_tmpl: "${alert_target} node status is abnormal, Status=${alert_value}"
+
+  - name: "SDB_Node_FTStatus"
+    desc: "SequoiaDB node fault tolerance status is abnormal."
+    scope: "cluster"
+    eval_metric: "SDB_Node_FTStatus"
+    eval_rules:
+      - operator: "=="
+        threshold: "NOSPC"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "DEADSYNC"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "TRANSERR"
+        severity: 2
+        fire_duration: 0
+      - operator: "=="
+        threshold: "SLOWNODE"
+        severity: 3
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} node fault tolerance status is abnormal."
+    description_tmpl: "${alert_target} node fault tolerance status is abnormal, FTStatus=${alert_value}"
+
+  - name: "SDB_LSN_Diff_Too_Large"
+    desc: "The LSN difference between nodes in SequoiaDB group is too large."
+    scope: "cluster"
+    eval_metric: "SDB_LSN_Diff_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 20
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "The LSN difference of node ${alert_target} is too large, group is ${alert_labels.group_name}."
+    description_tmpl: "The LSN difference of node ${alert_target} exceeds ${alert_threshold}% for ${alert_duration} seconds, currently ${alert_value}%, group is ${alert_labels.group_name}."
+
+  - name: "SDB_Connections_Exceeded_MaxPool_Limit"
+    desc: "The number of SequoiaDB connections exceeds the maximum number of thread pool."
+    scope: "cluster"
+    eval_metric: "SDB_Connects_Maxpool_ratio"
+    eval_rules:
+      - operator: ">="
+        threshold: 100
+        severity: 3
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "The number of connections of node ${alert_target} exceeds the maximum number of thread pool."
+    description_tmpl: "The number of connections of node ${alert_target} exceeds ${alert_threshold}% of the maxpool(${alert_labels.maxpool}) for ${alert_duration} seconds, currently ${alert_value}% (${alert_labels.total_num_connects})"
+
+  - name: "SDB_Too_Many_Connects"
+    desc: "Too many connections on SequoiaDB node."
+    scope: "cluster"
+    eval_metric: "SDB_Connects_Maxconn_ratio"
+    eval_rules:
+      - operator: ">="
+        threshold: 80
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Too many connections on ${alert_target}."
+    description_tmpl: "The number of connections of node ${alert_target} exceeds ${alert_threshold}% of the maxconn(${alert_labels.maxconn}) for ${alert_duration} seconds, currently ${alert_value}% (${alert_labels.total_num_connects})"
+
+  - name: "SDB_Log_Space_Insufficient"
+    desc: "Insufficient replication log space for SequoiaDB node."
+    scope: "cluster"
+    eval_metric: "SDB_FreeLogSpace_ratio"
+    eval_rules:
+      - operator: "<"
+        threshold: 80
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - "<"
+      - "<="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Insufficient replication log space for ${alert_target}."
+    description_tmpl: "${alert_target} free log space is less than ${alert_threshold}% for ${alert_duration} seconds, currently ${alert_value}%."
+
+  - name: "SDB_Insufficient_Data_Directory_Space"
+    desc: "Insufficient data directory space for SequoiaDB node."
+    scope: "cluster"
+    eval_metric: "SDB_DiskFreeSpace_ratio"
+    eval_rules:
+      - operator: "<"
+        threshold: 20
+        severity: 2
+        fire_duration: 0
+    operator_options:
+      - "<"
+      - "<="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Insufficient data directory space for ${alert_target}"
+    description_tmpl: "${alert_target} free data directory space is less than ${alert_threshold}%, currently ${alert_value}%."
+
+  - name: "SDB_Primary_Node_Switch"
+    desc: "SequoiaDB node downgraded to a slave node."
+    scope: "cluster"
+    eval_metric: "SDB_Primary_Node_Switch"
+    eval_rules:
+      - severity: 2
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: -1
+    summary_tmpl: "${alert_target} has been downgraded to a slave node."
+    description_tmpl: "${alert_target} has been downgraded to a slave node."
+
+  ####################################### SDB DDS ##########################################
+  - name: "DDS_Error_Node"
+    desc: "SequoiaDB DDS node error."
+    scope: "cluster"
+    eval_metric: "DDS_Error_Node"
+    eval_rules:
+      - severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} node error."
+    description_tmpl: "${alert_target} node error, Flag:${alert_labels.flag}, Detail:${alert_labels.detail}"
+
+  - name: "DDS_Node_Status"
+    desc: "SequoiaDB DDS node status is abnormal."
+    scope: "cluster"
+    eval_metric: "DDS_Node_Status"
+    eval_rules:
+      - operator: "=="
+        threshold: "DOWN"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "RECOVERING"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "ROLLBACK"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "STARTUP2"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "UNKNOWN"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "REMOVED"
+        severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} node status is abnormal."
+    description_tmpl: "${alert_target} node status is abnormal, Status=${alert_value}"
+
+  - name: "DDS_Node_FTStatus"
+    desc: "SequoiaDB DDS node fault tolerance status is abnormal."
+    scope: "cluster"
+    eval_metric: "DDS_Node_Replication_Latency"
+    eval_rules:
+      - operator: ">="
+        threshold: 300000
+        severity: 2
+        fire_duration: 30
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} node fault tolerance status is abnormal."
+    description_tmpl: "${alert_target} node fault tolerance status is abnormal, the replication latency with replSet nodes is too long, current replication latency: ${alert_value}"
+
+  - name: "DDS_Too_Many_Connects"
+    desc: "Too many connections on SequoiaDB DDS node."
+    scope: "cluster"
+    eval_metric: "DDS_Connects_ratio"
+    eval_rules:
+      - operator: ">="
+        threshold: 80
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Too many connections on ${alert_target}."
+    description_tmpl: "The number of connections of node ${alert_target} exceeds ${alert_threshold}% of the max_connects(${alert_labels.max_connects}) for ${alert_duration} seconds, currently ${alert_value}% (${alert_labels.current_connects})"
+
+  - name: "DDS_Too_Many_Cursors"
+    desc: "Too many cursors on SequoiaDB DDS node."
+    scope: "cluster"
+    eval_metric: "DDS_Cursors_ratio"
+    eval_rules:
+      - operator: ">="
+        threshold: 80
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Too many open cursors on ${alert_target}."
+    description_tmpl: "The number of cursors of node ${alert_target} exceeds ${alert_threshold}% of the max_cursors(${alert_labels.max_cursors}) for ${alert_duration} seconds, currently ${alert_value}% (${alert_labels.open_cursors})"
+
+  - name: "DDS_Primary_Node_Switch"
+    desc: "SequoiaDB DDS node downgraded to a secondary node."
+    scope: "cluster"
+    eval_metric: "DDS_Primary_Node_Switch"
+    eval_rules:
+      - severity: 2
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: -1
+    summary_tmpl: "${alert_target} has been downgraded to a secondary node."
+    description_tmpl: "${alert_target} has been downgraded to a secondary node."
+
+  - name: "DDS_Node_CPU_Hard_Limit"
+    desc: "The SequoiaDB DDS node CPU exceeds CPU hard limit."
+    scope: "cluster"
+    eval_metric: "DDS_Node_CPU_Hard_limit_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 60
+        suggestion: "Please check the cluster load to see if there are any unexpected concurrent operations; if the load is as expected, please reallocate resources, otherwise the number of concurrency should be reduced."
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "High CPU usage: ${alert_target}."
+    description_tmpl: "Node ${alert_target} CPU usage exceeds ${alert_threshold}% for ${alert_duration} seconds, currently ${alert_value}%."
+
+  - name: "DDS_Node_Heap_Soft_Limit"
+    desc: "The SequoiaDB DDS node heap exceeds heap soft limit."
+    scope: "cluster"
+    eval_metric: "DDS_Node_Heap_Soft_Limit_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 85
+        severity: 3
+        fire_duration: 0
+        suggestion: "Please check the cluster load to see if there are any unexpected concurrent operations; if the load is as expected, please reallocate resources, otherwise the number of concurrency should be reduced."
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "High heap usage: ${alert_target}."
+    description_tmpl: "Node ${alert_target} heap usage(${alert_labels.heap_size}MB) exceeds ${alert_threshold}% of the soft_limit(${alert_labels.soft_limit}MB) for ${alert_duration} seconds, currently ${alert_value}%."
+
+  - name: "DDS_Node_Actively_Reclaim_Memory"
+    desc: "The SequoiaDB DDS node actively Reclaim memory."
+    scope: "cluster"
+    eval_metric: "DDS_Node_Actively_Reclaim_Memory"
+    eval_rules:
+      - operator: "=="
+        threshold: true
+        severity: 1
+        fire_duration: 0
+        suggestion: "Please check the cluster load to see if there are any unexpected concurrent operations; if the load is as expected, please reallocate resources, otherwise the number of concurrency should be reduced."
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Actively reclaim memory: ${alert_target}."
+    description_tmpl: "Node ${alert_target} actively reclaim memory of the soft_limit(${alert_labels.soft_limit}MB) for ${alert_duration} seconds, currently ${alert_labels.heap_size}MB."
+
+  - name: "DDS_Node_Memory_Hard_Limit"
+    desc: "The SequoiaDB DDS node memory exceeds memory hard limit."
+    scope: "cluster"
+    eval_metric: "DDS_Node_Memory_Hard_Limit_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 80
+        severity: 0
+        fire_duration: 0
+        suggestion: "Please increase the memory resources of the node as soon as possible or significantly reduce the number of requests, otherwise it may cause the node to crash."
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "High memory usage: ${alert_target}."
+    description_tmpl: "Node ${alert_target} memory usage(${alert_labels.mem_resident}MB) exceeds ${alert_threshold}% of the hard_limit(${alert_labels.hardLimit_memory}MB) for ${alert_duration} seconds, currently ${alert_value}%."
+
+  - name: "DDS_Node_Memory_Soft_Limit"
+    desc: "The SequoiaDB DDS node resident memory exceeds os memory soft limit."
+    scope: "cluster"
+    eval_metric: "DDS_Node_Memory_Soft_Limit_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 100
+        severity: 3
+        fire_duration: 0
+        suggestion: "Please check the cluster load to see if there are any unexpected concurrent operations. If the load does not meet expectations, reduce the number of concurrent operations to avoid causing node crashes."
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "High memory usage: ${alert_target}."
+    description_tmpl: "Node ${alert_target} memory usage(${alert_labels.mem_resident}MB) exceeds ${alert_threshold}% of the os memory soft_limit(${alert_labels.softLimit_memory_mb}MB) for ${alert_duration} seconds, currently ${alert_value}%."
+
+  - name: "DDS_Node_Concurrent_Read_Tickets"
+    desc: "The number of SequoiaDB DDS node concurrent read available tickets is abnormal"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Concurrent_Read_Tickets"
+    eval_rules:
+      - operator: "<="
+        threshold: 5
+        severity: 2
+        fire_duration: 300
+      - operator: "=="
+        threshold: 0
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - "<"
+      - "<="
+      - "=="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Abnormal node concurrent read available tickets: ${alert_target}."
+    description_tmpl: "Node concurrent read available tickets is less than or equal to ${alert_threshold} for ${alert_duration} seconds, currently ${alert_value}."
+
+  - name: "DDS_Node_Concurrent_Write_Tickets"
+    desc: "The number of SequoiaDB DDS node concurrent write available tickets is abnormal"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Concurrent_Write_Tickets"
+    eval_rules:
+      - operator: "<="
+        threshold: 5
+        severity: 2
+        fire_duration: 300
+      - operator: "=="
+        threshold: 0
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - "<"
+      - "<="
+      - "=="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Abnormal node concurrent write available tickets: ${alert_target}."
+    description_tmpl: "Node concurrent write available tickets is less than or equal to ${alert_threshold} for ${alert_duration} seconds, currently ${alert_value}."
+
+  - name: "DDS_Node_Queued_Read"
+    desc: "The number of SequoiaDB DDS node queued read is abnormal"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Queued_Read"
+    eval_rules:
+      - operator: ">"
+        threshold: 10
+        severity: 2
+        fire_duration: 60
+      - operator: ">"
+        threshold: 30
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Abnormal node queued read: ${alert_target}."
+    description_tmpl: "Node queued read is greater than or equal to ${alert_threshold} for ${alert_duration} seconds, currently ${alert_value}."
+
+  - name: "DDS_Node_Queued_Write"
+    desc: "The number of SequoiaDB DDS node queued write is abnormal"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Queued_Write"
+    eval_rules:
+      - operator: ">"
+        threshold: 10
+        severity: 2
+        fire_duration: 60
+      - operator: ">"
+        threshold: 30
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "Abnormal node queued write: ${alert_target}."
+    description_tmpl: "Node queued write is greater than or equal to ${alert_threshold} for ${alert_duration} seconds, currently ${alert_value}."
+
+  - name: "DDS_Node_Vector_Index_Cache_Usage"
+    desc: "High SequoiaDB DDS node vector index cache usage"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Vector_Index_Cache_Usage"
+    eval_rules:
+      - operator: ">"
+        threshold: 75
+        severity: 3
+        fire_duration: 0
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "High node vector index cache usage: ${alert_target}"
+    description_tmpl: "Node ${alert_target} vector index cache usage exceeds ${alert_threshold}% for ${alert_duration} seconds, currently ${alert_value}%."
+
+  - name: "DDS_Error_Auto_Backup_Task"
+    desc: "SequoiaDB DDS auto backup task error."
+    scope: "cluster"
+    eval_metric: "DDS_Error_Auto_Backup_Task"
+    eval_rules:
+      - severity: 1
+        fire_duration: 0
+        suggestion: "Please find the issue based on the error message, and we recommend retrying the manual backup after resolving the problem."
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "The auto backup task of cluster with cluster ID ${alert_labels.target} execute error."
+    description_tmpl: "The auto backup task of cluster with cluster ID ${alert_labels.target} execute error, Detail:${alert_labels.detail}"
+
+  ####################################### Server ##########################################
+  - name: "Server_CPU_Usage"
+    desc: "Server CPU Usage."
+    scope: "host"
+    eval_metric: "Server_CPU_Usage"
+    eval_rules:
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 60
+      - operator: ">"
+        threshold: 70
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "High CPU usage: ${alert_target}"
+    description_tmpl: "Server ${alert_target} CPU usage exceeds ${alert_threshold}% for ${alert_duration} seconds, currently ${alert_value}%."
+
+  - name: "Server_Memory_Usage"
+    desc: "Server memory usage."
+    scope: "host"
+    eval_metric: "Server_Memory_Usage"
+    eval_rules:
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 60
+      - operator: ">"
+        threshold: 70
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "High memory usage: ${alert_target}"
+    description_tmpl: "Server ${alert_target} memory usage exceeds ${alert_threshold}% for ${alert_duration} seconds, currently ${alert_value}%."
+
+  - name: "Server_Disk_Usage"
+    desc: "Server disk usage."
+    scope: "host"
+    eval_metric: "Server_Disk_Usage"
+    eval_rules:
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 0
+      - operator: ">"
+        threshold: 70
+        severity: 2
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "High disk usage: ${alert_target}"
+    description_tmpl: "Server ${alert_target} disk usage exceeds ${alert_threshold}% for ${alert_duration} seconds, currently ${alert_value}%."
+
+  - name: "Agent_Status"
+    desc: "Agent status is abnormal."
+    scope: "host"
+    eval_metric: "Agent_Status"
+    eval_rules:
+      - operator: "=="
+        threshold: "Timeout"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "Offline"
+        severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 0
+    summary_tmpl: "${alert_target} agent status is abnormal."
+    description_tmpl: "Agent status is abnormal, may be due to a failure of host ${alert_target} or Agent node. Status=${alert_value}"

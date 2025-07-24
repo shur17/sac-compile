@@ -1,0 +1,85 @@
+sac:
+  collectStrategies:
+    - name: "SDB_CS"
+      enable: true
+      interval: 1800000
+
+    - name: "SDB_CL"
+      enable: true
+      interval: 1800000
+
+    - name: "SQL_GROUP_META"
+      enable: true
+      interval: 60000
+
+    - name: "SQL_NODE_META"
+      enable: true
+      interval: 60000
+
+    - name: "SQL_DATABASE_META"
+      enable: true
+      interval: 60000
+
+    - name: "SQL_TABLE_META"
+      enable: true
+      interval: 60000
+
+    - name: "SDB_DOMAIN_META"
+      enable: true
+      interval: 60000
+
+    - name: "SDB_GROUP_META"
+      enable: true
+      interval: 60000
+
+    - name: "SDB_NODE_META"
+      enable: true
+      interval: 30000
+
+    - name: "SDB_MAPPING_META"
+      enable: true
+      interval: 60000
+
+    - name: "SQL_NODE"
+      enable: true
+      interval: 60000
+
+    - name: "SDB_NODE"
+      enable: true
+      interval: 60000
+
+    - name: "SQL_NODE_CONFIG"
+      enable: true
+      interval: 300000
+
+    - name: "SQL_NODE_HEALTH"
+      enable: true
+      interval: 10000
+
+    - name: "SQL_QUERY"
+      enable: true
+      interval: 5000
+
+    - name: "SDB_NODE_HEALTH"
+      enable: true
+      interval: 10000
+
+    - name: "SDB_QUERY"
+      enable: true
+      interval: 5000
+
+    - name: "SQL_NODE_MONITOR"
+      enable: true
+      interval: 60000
+
+    - name: "SDB_NODE_MONITOR"
+      enable: true
+      interval: 60000
+
+    - name: "SQL_PERF_NODE_LOG"
+      enable: true
+      interval: 30000
+
+    - name: "SDB_PERF_NODE_LOG"
+      enable: true
+      interval: 30000

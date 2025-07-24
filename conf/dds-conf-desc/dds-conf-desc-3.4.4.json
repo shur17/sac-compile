@@ -1,0 +1,10 @@
+[
+  {
+    "name": "setParameter:softMemoryLimitMB",
+    "supported": false
+  },
+  {
+    "name": "setParameter:oomFlowControlOperationFlags",
+    "supported": false
+  }
+]

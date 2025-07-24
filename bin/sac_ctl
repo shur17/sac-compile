@@ -1,0 +1,1073 @@
+#!/bin/bash
+
+# 注意：使用该控制脚本启动程序时，需要保证被启动程序的日志不会输出到屏幕上，而只输出到日志文件里
+# 这是因为该脚本启动程序时，会将程序的屏幕输出重定向到临时日志文件里，假如程序的日志会输出到屏幕上，
+# 将导致输出到屏幕上的日志被重定向输入到临时日志文件，从而导致该日志文件不断膨胀
+
+#   exit code list:
+#   0     successful termination
+#   1     unsuccessful termination
+#   3     service is running
+#   4     service is not running
+#   5     service exists
+#   6     service does not exist
+#   7     port isn't in range [ 1, 65535 ]
+#   8     port is already in use
+#   9     executive jar file was not found
+#   10    config file was not found
+#   11    server.port was not config
+#   12    insufficient machine memory
+#   13    service is invalid
+#   14    sequoiadb config file was not found
+#   15    sequoiadb INSTALL_DIR was not set in config file
+#   16    script file was not found
+#   17    service data has been initialized
+#   18    stop service timeout
+#   64    command line usage error
+#   77    permission denied
+# all services
+SAC_CTL_ALL_SERVICES=("sac-registration-center" "sac-config" "sac-user-center" "sac-collector" "sac-alert" "sac-deployment" "sac-gateway" "sac-monitor" "sac-maintainer")
+
+# check service start timeout, default value is 90 seconds
+SAC_CTL_CHECK_START_TIMEOUT=90
+# check service stop timeout, default value is 120 seconds
+SAC_CTL_CHECK_STOP_TIMEOUT=120
+# check service pull up timeout, default value is 30 seconds
+SAC_CTL_CHECK_PULL_UP_TIMEOUT=30
+
+# check user
+# if neither root nor sac user, exit with PERMISSION_DENIED
+function check_user()
+{
+  local mode=$1
+  if [ "$CUR_USER" != "$SAC_USER" -a "$CUR_USER" != "root" ]
+  then
+    echo "ERROR: './sac_ctl $mode' requires [$SAC_USER] permission" >&2
+    exit 77
+  fi
+}
+
+# if root: change to sac user to execute command
+# if sac user: execute command
+function exec_cmd()
+{
+   local cmd="$1"
+
+   if [ $CUR_USER == "root" ]
+   then
+      su - $SAC_USER -c "${cmd}" >> /dev/null 2>&1
+      return $?
+   else
+      eval "${cmd}" >> /dev/null 2>&1
+      return $?
+   fi
+}
+
+# check whether has write permission for log path /tmp/sequoiasac/log
+function check_log_path_permission()
+{
+  local tmp_log_path="/tmp/sequoiasac/log"
+  while [ ! -d $tmp_log_path ]; do
+    tmp_log_path=$(dirname "$tmp_log_path")
+  done
+  if [ ! -w $tmp_log_path ]; then
+    echo "no write permission for path: $tmp_log_path"
+    return 1
+  fi
+  local log_path="/tmp/sequoiasac/log"
+  if [ ! -d $log_path ]; then
+    exec_cmd "mkdir -p $log_path"
+  fi
+  chmod u+w,g+w,o+w -R $log_path > /dev/null 2>&1
+  return 0
+}
+
+# print log
+function print_log()
+{
+  test -d $SAC_LOG_PATH || exec_cmd "mkdir $SAC_LOG_PATH"
+  local log_level=$1
+  local log=$2
+  local date=`date "+%Y-%m-%d %H:%M:%S"`
+  local log_info="$date $log_level: $log"
+  echo "$log_level: $log"
+  exec_cmd "echo \"$log_info\" >> $SAC_LOG_PATH/sac_ctl.log"
+}
+
+# print lack param message
+# arg1: parameter name
+function lack_para()
+{
+  local para_name=$1
+  echo "ERROR: sac_ctl: no parameter \"$para_name\" specified" >&2
+  echo "Try 'sac_ctl --help' for more information."
+  exit 64
+}
+
+# check whether the parameter is of numeric type
+# arg1: parameter name
+# arg2: parameter value
+function check_num_para()
+{
+  local para_name=$1
+  local para_value=$2
+
+  local regex='^[0-9]+$'
+  if ! [[ "$para_value" =~ $regex ]]; then
+    echo "ERROR: sac_ctl: invalid value for parameter \"$para_name\": \"$para_value\"" >&2
+    echo "Try 'sac_ctl --help' for more information."
+    exit 64
+  fi
+}
+
+# check whether the port is in use
+# arg1: port number
+function check_port_available()
+{
+  local service_port=$1
+  local exp_available=$2
+
+  # ignore TIME_WAIT port which is useful
+  netstat -npa | awk '{print $4,$6}' | grep -vw TIME_WAIT | grep -vw FIN_WAIT2 | grep -vw FIN_WAIT1 | grep -vw CLOSE_WAIT | awk -F : '{print $NF}' | grep -w $service_port >> /dev/null 2>&1
+  local rc=$?
+  if [ $rc == 0 -a $exp_available == false ]; then
+    echo "ERROR: service port $service_port is already in use" >&2
+    return 8
+  fi
+
+  if [ $rc == 0 -a $exp_available == true ]; then
+      return 8
+  fi
+
+  return 0
+}
+
+function help()
+{
+  echo "sac_ctl is a utility to start, stop, or control a SAC service."
+  echo ""
+  echo "Usage:"
+  echo "  sac_ctl list"
+  echo "  sac_ctl start <SERVICE_NAME>"
+  echo "  sac_ctl startall"
+  echo "  sac_ctl stop <SERVICE_NAME> [--disable-warning]"
+  echo "  sac_ctl stopall"
+  echo "  sac_ctl restart  <SERVICE_NAME>"
+  echo "  sac_ctl restartall"
+  echo "  sac_ctl status [SERVICE_NAME]"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help             output help message, then exit"
+  echo "  -v, --version          output version information, then exit"
+  echo "  --disable-warning      disable warning message when stop SAC service"
+  echo ""
+  echo "Optional Service Name List:"
+  for service_name in ${SAC_CTL_ALL_SERVICES[@]}
+  do
+    echo "  $service_name"
+  done
+}
+
+function show_version()
+{
+  if [[ ! -f $SAC_CTL_INSTALL_PATH/VERSION ]]; then
+    echo "ERROR: VERSION file was not found in $SAC_CTL_INSTALL_PATH"
+    exit 1
+  else
+    echo "$(cat $SAC_CTL_INSTALL_PATH/VERSION)"
+  fi
+}
+
+# check service if valid or added
+# arg1: service name to check
+# arg2: whether or not to expect the service name is added
+function check_service_exist()
+{
+  local service_name=$1
+  local exp_exist=$2
+
+  # if service_name was in SAC_CTL_ALL_SERVICES
+  local act_valid=false
+  for service in ${SAC_CTL_ALL_SERVICES[@]}
+  do
+    if [ $service = $service_name ]; then
+      act_valid=true
+      break
+    fi
+  done
+  if [[ $act_valid == false ]]; then
+    print_log "ERROR" "service $service_name is invalid" >&2
+    print_log "INFO" "Try 'sac_ctl --help' for more information."
+    return 13
+  fi
+
+  local act_exist=false
+  if [[ -d $SAC_CTL_INSTALL_PATH/conf/$service_name ]]; then
+    act_exist=true
+  fi
+
+  if [[ $exp_exist == false && $act_exist == true ]]; then
+    print_log "ERROR" "service $service_name has been added" >&2
+    return 5
+  fi
+
+  if [[ $exp_exist == true && $act_exist == false ]]; then
+    print_log "ERROR" "service $service_name not added" >&2
+    return 6
+  fi
+
+  return 0
+}
+
+# get the pid of one service
+function get_one_pid()
+{
+  local service_name=$1
+  GLOBAL_TEMP_PID=`ps -ef | grep "$SAC_CTL_INSTALL_PATH/lib/$service_name.jar" | grep "service_name=$service_name" | grep -v grep | awk '{print $2}'`
+}
+
+# get the port of one service
+function get_one_port()
+{
+  local service_name=$1
+  if [[ ! -f $SAC_CTL_INSTALL_PATH/conf/$service_name/bootstrap.yml ]]; then
+    get_one_pid $service_name
+    SAC_CTL_TEMP_PORT=`netstat -nltp | grep $GLOBAL_TEMP_PID | awk '{print $4}' | cut -b 4-`
+  else
+    SAC_CTL_TEMP_PORT=`cat $SAC_CTL_INSTALL_PATH/conf/$service_name/bootstrap.yml | grep "^\s*port" | awk -F'[ =]' '{print $NF }'`
+  fi
+}
+
+# get status of one service
+function get_one_status()
+{
+  local service_name=$1
+  check_service_exist $service_name true
+  local ret=$?
+  test $ret -eq 0 || return $ret
+
+  get_one_pid $service_name
+  if [[ -n "$GLOBAL_TEMP_PID" ]]; then
+    get_one_port $service_name >> /dev/null 2>&1
+    local start_time=`ps -eo lstart,pid | grep -w "$GLOBAL_TEMP_PID" | awk '{print $1,$2,$3,$4,$5}'`
+    if [ "$start_time" != "" ]; then
+      start_time=`date "+%Y-%m-%d-%H:%M:%S" -d "$start_time"`
+    else
+      start_time="-"
+    fi
+    printf "%-25s %-10s %-10s %-25s\n" $service_name $GLOBAL_TEMP_PID $SAC_CTL_TEMP_PORT $start_time
+    return 3
+  else
+    printf "%-25s %-10s %-10s %-25s\n" $service_name "-" "-" "-"
+    return 4
+  fi
+
+  return 0
+
+}
+
+# print succeed, skipped or failed services
+# arg1: succeed services
+# arg2: skipped services
+# arg3: failed services
+# arg4: total service count
+# arg5: succeed service count
+# arg6: skipped service count
+# arg7: failed service count
+function print_res()
+{
+
+  local succeed_services=$1
+  local skipped_services=$2
+  local failed_services=$3
+  local total_cnt=$4
+  local succ_cnt=$5
+  local skip_cnt=$6
+  local fail_cnt=$7
+
+  echo "----------------------------------------------------------------"
+  echo "Summary for operation: "
+
+  for succeed_service in ${succeed_services[@]}
+  do
+    printf "%-25s %35s\n" $succeed_service "SUCCESS"
+  done
+
+  for skipped_service in ${skipped_services[@]}
+  do
+    printf "%-25s %35s\n" $skipped_service "SKIPPED"
+  done
+
+  for failed_service in ${failed_services[@]}
+  do
+    printf "%-25s %35s\n" $failed_service "FAILURE"
+  done
+
+  echo "----------------------------------------------------------------"
+  echo "Total: $total_cnt; Succeed: $succ_cnt; Skipped: $skip_cnt; Failed: $fail_cnt"
+
+}
+
+function print_warning()
+{
+  local service_name=$1
+  case $service_name in
+    sac-gateway)
+      print_log "WARNING" "stopping sac-gateway will cause the frontend to be unable to communicate with the backend."
+      ;;
+    sac-registration-center)
+      print_log "WARNING" "stopping sac-registration-center will cause the services to be unable to communicate with each other."
+      ;;
+    sac-config)
+      print_log "WARNING" "stopping sac-config will prevent from reading the configuration from the configuration center."
+      ;;
+    sac-user-center)
+      print_log "WARNING" "stopping sac-user-center and you will not be able to login, logout or modify password."
+      ;;
+    sac-collector)
+      print_log "WARNING" "stopping sac-collector will not be able to process the data collected from the agent."
+      ;;
+    sac-monitor)
+      print_log "WARNING" "stopping sac-monitor will result in no data on the page."
+      ;;
+    sac-deployment)
+      print_log "WARNING" "stopping sac-deployment and you will prevent deployment, discover SequoiaDB cluster and other operations."
+      ;;
+    sac-alert)
+      print_log "WARNING" "stopping sac-alert will not detect and notify the abnormal status of the SequoiaDB cluster."
+      ;;
+    sac-maintainer)
+      print_log "WARNING" "stopping sac-maintainer will result in the inability to handle the operation and maintenance operations of the business cluster."
+      ;;
+  esac
+}
+
+# list added services
+function list()
+{
+  printf "%-25s %-53s %-53s\n" "SERVICENAME" "SERVICECONF" "SERVICELOGPATH"
+
+  if [[ ! -d $SAC_CTL_INSTALL_PATH/conf ]]; then
+    printf "Total: 0\n"
+    return 0
+  fi
+
+  local total_cnt=0
+  # service which is lack of bootstrap.yml
+  local lack_conf_services
+  local lack_conf_idx=0
+  # service which is lack of jar
+  local lack_jar_services
+  local lack_jar_idx=0
+  for service_name in ${SAC_CTL_ALL_SERVICES[@]}
+  do
+    printf "%-25s %-53s %-53s\n" $service_name "$SAC_CTL_INSTALL_PATH/conf/$service_name/bootstrap.yml" "$SAC_LOG_PATH/$service_name"
+    # record the service which is lack of bootstrap.yml
+    if [[ ! -f $SAC_CTL_INSTALL_PATH/conf/$service_name/bootstrap.yml ]]; then
+      lack_conf_services[$lack_conf_idx]=$service_name
+      lack_conf_idx=$(($lack_conf_idx+1))
+    fi
+    # record the service which is lack of jar
+    if [[ ! -f $SAC_CTL_INSTALL_PATH/lib/$service_name.jar ]]; then
+      lack_jar_services[$lack_jar_idx]=$service_name
+      lack_jar_idx=$(($lack_jar_idx+1))
+    fi
+    total_cnt=$(($total_cnt+1))
+  done
+
+  printf "Total: %s\n" $total_cnt
+
+  for lack_conf_service in ${lack_conf_services[@]}
+  do
+    print_log "WARNING" "bootstrap.yml was not found in $SAC_CTL_INSTALL_PATH/conf/$lack_conf_service"
+  done
+
+  for lack_jar_service in ${lack_jar_services[@]}
+  do
+    print_log "WARNING" "$lack_jar_service.jar was not found in $SAC_CTL_INSTALL_PATH/lib"
+  done
+
+}
+
+# get status of added services
+function get_status()
+{
+  local services
+  local port
+
+  if test -z $SAC_CTL_SERVICE_NAME; then
+    services=${SAC_CTL_ALL_SERVICES[@]}
+  else
+    services=$SAC_CTL_SERVICE_NAME
+  fi
+
+  printf "%-25s %-10s %-10s %-25s\n" "SERVICE" "PID" "PORT" "START_TIME"
+
+  local total_cnt=0
+  local run_ctl=0
+  # service which is lack of bootstrap.yml
+  local lack_conf_services
+  local lack_conf_idx=0
+  # service which is lack of jar
+  local lack_jar_services
+  local lack_jar_idx=0
+
+  # string to array
+  services=($services)
+  for service in ${services[@]}
+  do
+    get_one_status $service
+    local ret=$?
+    test $ret -eq 3 && run_ctl=$(($run_ctl+1))
+    # record the service which is lack of bootstrap.yml
+    if [[ ! -f $SAC_CTL_INSTALL_PATH/conf/$service/bootstrap.yml ]]; then
+      lack_conf_services[$lack_conf_idx]=$service
+      lack_conf_idx=$(($lack_conf_idx+1))
+    fi
+    # record the service which is lack of jar
+    if [[ ! -f $SAC_CTL_INSTALL_PATH/lib/$service.jar ]]; then
+      lack_jar_services[$lack_jar_idx]=$service
+      lack_jar_idx=$(($lack_jar_idx+1))
+    fi
+    total_cnt=$(($total_cnt+1))
+  done
+
+  printf "Total: %s; Run: %s\n" $total_cnt $run_ctl
+
+  for lack_conf_service in ${lack_conf_services[@]}
+  do
+    print_log "WARNING" "bootstrap.yml was not found in $SAC_CTL_INSTALL_PATH/conf/$lack_conf_service"
+  done
+
+  for lack_jar_service in ${lack_jar_services[@]}
+  do
+    print_log "WARNING" "$lack_jar_service.jar was not found in $SAC_CTL_INSTALL_PATH/lib"
+  done
+
+}
+
+# backup service system.out log
+function backup_system_out_file()
+{
+  local service_name=$1
+  local service_system_out_file="$SAC_LOG_PATH/$service_name/system.out"
+  if [[ ! -f $service_system_out_file ]]; then
+    return 0
+  fi
+
+  local size=$(wc -c < $service_system_out_file)
+  if [[ $size -lt 104857600 ]]; then
+    return 0
+  fi
+
+  local backup_file="$SAC_LOG_PATH/$service_name/system.1.out"
+  exec_cmd "mv $service_system_out_file $backup_file"
+}
+
+function get_java_path()
+{
+  local arch=`uname -m`
+  echo "$SAC_CTL_INSTALL_PATH/lib/java/$arch/bin/java"
+}
+
+function inner_start()
+{
+  get_one_status $service_name >> /dev/null 2>&1
+  if [[ $? == 3 ]]; then
+    if [[ $service_name =~ "sac-config" && $skip_registration_center == false ]]; then
+      DISABLE_STOP_WARNING=true
+      KILL_SERVICE=true
+      stop sac-config >/dev/null 2>&1
+    else
+      print_log "WARNING" "service $service_name is already running"
+      return 3
+    fi
+  fi
+
+  if [[ ! -d $SAC_CTL_INSTALL_PATH/lib || ! -f $SAC_CTL_INSTALL_PATH/lib/$service_name.jar ]]; then
+    print_log "ERROR" "executive jar file $service_name.jar was not found in $SAC_CTL_INSTALL_PATH/lib"
+    return 9
+  fi
+
+  if [[  ! -f $SAC_CTL_INSTALL_PATH/conf/$service_name/bootstrap.yml ]]; then
+    print_log "ERROR" "config file bootstrap.yml was not found in $SAC_CTL_INSTALL_PATH/conf/$service_name"
+    return 10
+  fi
+
+  get_one_port $service_name >> /dev/null 2>&1
+  if [[ -z "$SAC_CTL_TEMP_PORT" ]]; then
+    print_log "ERROR" "server.port was not config in $SAC_CTL_INSTALL_PATH/conf/$service_name/bootstrap.yml"
+    return 11
+  fi
+  print_log "INFO" "Checking whether port $SAC_CTL_TEMP_PORT is available ..."
+
+  for ((i=0; i<15; i++));
+  do
+    check_port_available $SAC_CTL_TEMP_PORT true >> /dev/null 2>&1
+    local ret=$?
+    if [ $ret == 8 ]; then
+      sleep 0.2
+    else
+      break;
+    fi
+  done
+  check_port_available $SAC_CTL_TEMP_PORT true >> /dev/null 2>&1
+  local ret=$?
+  test $ret -ne 0 && print_log "ERROR" "service port $SAC_CTL_TEMP_PORT is already in use" >&2 && return $ret
+  print_log "INFO" "Port $SAC_CTL_TEMP_PORT is available"
+
+  test ! -f $SAC_CTL_LOCK_FILE &&
+    print_log "ERROR" "$SAC_CTL_LOCK_FILE was not found" &&
+    return 14
+
+  print_log "INFO" "Starting service $service_name ..."
+
+  if [[ ! -d $SAC_LOG_PATH/$service_name ]]; then
+    exec_cmd "mkdir -p $SAC_LOG_PATH/$service_name"
+  fi
+
+  # get sac protocol
+  local sslEnabled="false"
+  test -f $SAC_CTL_INSTALL_PATH/conf/sac-config/properties/application-common.yml &&
+    sslEnabled=`cat $SAC_CTL_INSTALL_PATH/conf/sac-config/properties/application-common.yml | grep "^\s*enabled" | awk -F'[ =]' '{print $NF }'`
+  local protocol=""
+  test $sslEnabled == "true" && protocol="https" || protocol="http"
+  local tomcat_tmpl_path=$SAC_CTL_INSTALL_PATH/tmp/tomcat.$SAC_CTL_TEMP_PORT/
+  local DEFAULT_JVM_OPTS="-Dloader.path=$SAC_CTL_INSTALL_PATH/lib/shared-lib,$SAC_CTL_INSTALL_PATH/lib/server-lib/$service_name-lib -Duser.name=$SAC_USER -Duser.group.name=$SAC_USER_GROUP -Djava.io.tmpdir=$tomcat_tmpl_path -Dfile.encoding=utf-8 -Dserver.tomcat.basedir=$tomcat_tmpl_path -Dversion.file=$VERSION_FILE -Dsac.dir=$SAC_CTL_INSTALL_PATH -Dsac.protocol=$protocol -Dspring.config.additional-location=$SAC_CTL_INSTALL_PATH/conf/$service_name/bootstrap.yml -Dsac.log.path=$SAC_LOG_PATH -Dlogging.config=$SAC_CTL_INSTALL_PATH/conf/$service_name/logback.xml -Dservice_name=$service_name -XX:ErrorFile=$SAC_LOG_PATH/$service_name/hs_err_pid%p.log"
+  # get config jvm options
+  local CONF_JVM_OPTS
+  if [[ ! -f $SAC_CTL_INSTALL_PATH/conf/$service_name/$service_name.vmoptions ]]; then
+    print_log "WARNING" "$service_name.vmoptions file was not found in $SAC_CTL_INSTALL_PATH/conf/$service_name"
+    CONF_JVM_OPTS="-Xms250M -Xmx400M"
+  else
+    CONF_JVM_OPTS=`cat $SAC_CTL_INSTALL_PATH/conf/$service_name/$service_name.vmoptions`
+    # remove line breaks
+    CONF_JVM_OPTS=`echo $CONF_JVM_OPTS`
+  fi
+  local hprof_file=${SAC_CTL_INSTALL_PATH}/conf/$service_name.hprof
+  local on_out_of_memory_file=${SAC_CTL_INSTALL_PATH}/tools/on-OOM/on_out_of_memory.sh
+  CONF_JVM_OPTS="$CONF_JVM_OPTS -XX:OnOutOfMemoryError='$on_out_of_memory_file $service_name' -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=$hprof_file"
+  # start service
+  check_log_path_permission
+  local ret=$?
+  test $ret -eq 0 || exit $ret
+  local service_system_out_file="$SAC_LOG_PATH/$service_name/system.out"
+  backup_system_out_file $service_name
+  local starting_time=$(date +"%Y-%m-%d %H:%M:%S")
+  exec_cmd "echo \"[$starting_time]: Starting $service_name\" >> $service_system_out_file"
+  # clean service tomcat tmp dir
+  test -d $tomcat_tmpl_path && exec_cmd "rm -rf $tomcat_tmpl_path"
+  local java_path=`get_java_path`
+  exec_cmd "nohup $java_path $DEFAULT_JVM_OPTS $CONF_JVM_OPTS -jar $SAC_CTL_INSTALL_PATH/lib/$service_name.jar >> $service_system_out_file 2>&1 &"
+
+  # wait for the process to pull up until the $SAC_CTL_CHECK_PULL_UP_TIMEOUT is reached
+  for (( i=1; i<=$SAC_CTL_CHECK_PULL_UP_TIMEOUT; i++ ))
+  do
+    get_one_pid $service_name
+    if [[ -z $GLOBAL_TEMP_PID ]]; then
+      exec_cmd "sleep 1"
+      continue
+    fi
+  done
+
+  for (( i=1; i<=$SAC_CTL_CHECK_START_TIMEOUT; i++ ))
+  do
+    local initialized_info=$(sed -n "/$starting_time/,\$p" $service_system_out_file | grep "Initialized $service_name")
+    get_one_pid $service_name
+    test -z $GLOBAL_TEMP_PID && break
+    if [[ "$initialized_info" != "" ]]; then
+      print_log "SUCCESS" "$service_name is successfully started (PID: $GLOBAL_TEMP_PID)"
+      test -d $SAC_CTL_INSTALL_PATH/conf || exec_cmd "mkdir -p $SAC_CTL_INSTALL_PATH/conf"
+      exec_cmd "echo $GLOBAL_TEMP_PID > $SAC_CTL_INSTALL_PATH/conf/.$service_name.pid"
+      exec_cmd "echo $GLOBAL_TEMP_PID > $service_tmp_pid_file"
+      return 0
+    else
+      sleep 1
+    fi
+  done
+
+  if [[ $i > $SAC_CTL_CHECK_START_TIMEOUT ]]; then
+    print_log "ERROR" "start service $service_name timeout" >&2
+    return 19
+  fi
+
+  local memory_info=$(sed -n "/$starting_time/,\$p" $service_system_out_file | grep "Cannot allocate memory")
+  if [[ "$memory_info" != "" ]]; then
+    print_log "ERROR" "Fail to start service $service_name due to insufficient memory" >&2
+    return 12
+  fi
+
+  local log_info=$(sed -n "/$starting_time/,\$p" $service_system_out_file)
+  exec_cmd "echo \"$log_info\" >> $SAC_LOG_PATH/sac_ctl.log"
+  print_log "ERROR" "Fail to start service $service_name, please verify log in $SAC_LOG_PATH/$service_name or $SAC_LOG_PATH/sac_ctl.log" >&2
+  return 4
+}
+
+# start service
+# arg1: service_name to start
+function start()
+{
+  local service_name=$1
+  local skip_registration_center=$2
+  local service_tmp_pid_file=$3
+
+  check_service_exist $service_name true
+  local ret=$?
+  test $ret -eq 0 || return $ret
+
+  local lock_file="$SAC_CTL_INSTALL_PATH/tmp/sac_ctl/lock/$service_name.lock"
+  if [ ! -f $lock_file ]; then
+    exec_cmd "mkdir -p $SAC_CTL_INSTALL_PATH/tmp/sac_ctl/lock"
+    exec_cmd "touch $lock_file"
+  fi
+
+  (
+    # blocking wait for lock
+    flock -x 9
+
+    # release lock when exit
+    trap "flock -u 9" Exit
+
+    inner_start
+  ) 9>$lock_file
+}
+
+# start all added services
+function start_all()
+{
+
+  local total_cnt=0
+  local succ_services
+  local succ_idx=0
+  local succ_cnt=0
+  local skip_services
+  local skip_idx=0
+  local skip_cnt=0
+  local fail_services
+  local fail_idx=0
+  local fail_cnt=0
+
+  # preserve order：sac-registration-center > sac-config > other services
+  local sorted_services=()
+  local idx=0
+
+  # add sac-registration-center
+  for service in ${SAC_CTL_ALL_SERVICES[@]}
+  do
+    if [[ $service =~ "sac-registration-center" ]]; then
+      sorted_services[$idx]=$service
+      idx=$(($idx+1))
+    fi
+  done
+
+  # add sac-config
+  for service in ${SAC_CTL_ALL_SERVICES[@]}
+  do
+    if [[ $service =~ "sac-config" ]]; then
+      sorted_services[$idx]=$service
+      idx=$(($idx+1))
+    fi
+  done
+
+  # add other services
+  for service in ${SAC_CTL_ALL_SERVICES[@]}
+  do
+    if [[ ! $service =~ "sac-registration-center" && ! $service =~ "sac-config" ]]; then
+      sorted_services[$idx]=$service
+      idx=$(($idx+1))
+    fi
+  done
+
+  # start services
+  local tmp_pid_dir=$SAC_CTL_INSTALL_PATH/tmp/sac_ctl/pid
+  test -d $tmp_pid_dir || mkdir -p $tmp_pid_dir
+  local need_to_exit=false
+  local skip_registration_center=false
+  for service in ${sorted_services[@]}
+  do
+    echo "INFO: Starting service: $service"
+    local service_pid_file="$tmp_pid_dir/$$.$service.pid"
+    start $service $skip_registration_center $service_pid_file >/dev/null 2>&1
+    local ret=$?
+    if [[ $ret -eq 0 ]]; then
+      pid=`cat $service_pid_file`
+      test -f $service_pid_file && rm -f $service_pid_file
+      echo "SUCCESS: service $service is successfully started (PID: $pid)"
+      succ_services[$succ_idx]=$service
+      succ_idx=$(($succ_idx+1))
+      succ_cnt=$(($succ_cnt+1))
+    elif [[ $ret -eq 3 ]]; then
+      if [[ $service =~ "sac-registration-center" ]]; then
+        skip_registration_center=true
+      fi
+      echo "SKIPPED: service $service is already running"
+      skip_services[$skip_idx]=$service
+      skip_idx=$(($skip_idx+1))
+      skip_cnt=$(($skip_cnt+1))
+    else
+      if [[ $service =~ "sac-registration-center" || $service =~ "sac-config" ]]; then
+        need_to_exit=true
+      fi
+      case $ret in
+        4)
+          echo "ERROR: Fail to start service $service, please verify log in $SAC_LOG_PATH/$service or $SAC_LOG_PATH/sac_ctl.log" >&2
+          ;;
+        8)
+          echo "ERROR: service port $SAC_CTL_TEMP_PORT is already in use" >&2
+          ;;
+        9)
+          echo "ERROR: executive jar file $service.jar was not found in $SAC_CTL_INSTALL_PATH/lib" >&2
+          ;;
+        10)
+          echo "ERROR: config file bootstrap.yml was not found in $SAC_CTL_INSTALL_PATH/conf/$service" >&2
+          ;;
+        11)
+          echo "ERROR: server.port was not config in $SAC_CTL_INSTALL_PATH/conf/$service/bootstrap.yml"
+          ;;
+        12)
+          echo "ERROR: Fail to start service $service due to insufficient memory"
+          ;;
+        14)
+          echo "ERROR: $SAC_CTL_LOCK_FILE was not found"
+          ;;
+        19)
+          echo "ERROR: Start service $service timeout"
+      esac
+      fail_services[$fail_idx]=$service
+      fail_idx=$(($fail_idx+1))
+      fail_cnt=$(($fail_cnt+1))
+    fi
+    total_cnt=$(($total_cnt+1))
+    if [[ $need_to_exit == true ]]; then
+      break
+    fi
+  done
+
+  print_res "${succ_services[*]}" "${skip_services[*]}" "${fail_services[*]}" $total_cnt $succ_cnt $skip_cnt $fail_cnt
+
+  exit 0
+}
+
+function inner_stop()
+{
+  local original_pid_file=$SAC_CTL_INSTALL_PATH/conf/.$service_name.pid
+  local modified_pid_file=$SAC_CTL_INSTALL_PATH/conf/.$service_name.pid.tmp
+  test -f $original_pid_file && mv $original_pid_file $modified_pid_file
+  get_one_status $service_name >> /dev/null 2>&1
+  if [ $? = 4 ]; then
+    test -f $modified_pid_file && rm -f $modified_pid_file
+    print_log "WARNING" "service $service_name is not running"
+    return 4
+  fi
+
+  if [[ $DISABLE_STOP_WARNING != true ]];then
+    print_warning $service_name
+    read -p "Are you sure you want to continue stopping? (Y/n): " is_continue
+    if [[ $is_continue == "n" || $is_continue == "no" || $is_continue == "NO" || $is_continue == "N" ]]; then
+      test -f $modified_pid_file && mv $modified_pid_file $original_pid_file
+      return 0
+    fi
+  fi
+  get_one_pid $service_name
+  print_log "INFO" "Stopping service $service_name (PID: $GLOBAL_TEMP_PID) ..."
+
+  exec_cmd "kill -15 $GLOBAL_TEMP_PID >> /dev/null 2>&1"
+
+  local i
+  for (( i=1; i<=$SAC_CTL_CHECK_STOP_TIMEOUT; i++ ))
+  do
+    get_one_pid $service_name
+    if [[ -n $GLOBAL_TEMP_PID ]]; then
+      sleep 1
+    else
+      print_log "SUCCESS" "service $service_name is successfully stopped"
+      test -f $modified_pid_file && exec_cmd "rm -f $modified_pid_file"
+      return 0
+    fi
+
+  done
+
+  if [[ $i > $SAC_CTL_CHECK_STOP_TIMEOUT ]]; then
+    if [[ $KILL_SERVICE == "true" ]]; then
+      get_one_pid $service_name
+      exec_cmd "kill -9 $GLOBAL_TEMP_PID >> /dev/null 2>&1"
+      get_one_pid $service_name
+      if [[ -z $GLOBAL_TEMP_PID ]]; then
+        print_log "SUCCESS" "service $service_name is successfully stopped"
+        test -f $modified_pid_file && exec_cmd "rm -f $modified_pid_file"
+        return 0
+      else
+        print_log "ERROR" "Stop service $service_name timeout" >&2
+        test -f $modified_pid_file && mv $modified_pid_file $original_pid_file
+        return 18
+      fi
+    else
+      print_log "ERROR" "Stop service $service_name timeout" >&2
+      test -f $modified_pid_file && mv $modified_pid_file $original_pid_file
+      return 18
+    fi
+  else
+    print_log "ERROR" "Fail to stop service $service_name, please verify log in $SAC_LOG_PATH/$service_name" >&2
+    test -f $modified_pid_file && mv $modified_pid_file $original_pid_file
+    return 3
+  fi
+}
+
+# stop specified service
+# arg1: service name to stop
+function stop()
+{
+  local service_name=$1
+  check_service_exist $service_name true
+  local ret=$?
+  test $ret -eq 0 || return $ret
+
+  local lock_file="$SAC_CTL_INSTALL_PATH/tmp/sac_ctl/lock/$service_name.lock"
+  if [ ! -f $lock_file ]; then
+    exec_cmd "mkdir -p $SAC_CTL_INSTALL_PATH/tmp/sac_ctl/lock"
+    exec_cmd "touch $lock_file"
+  fi
+
+  (
+    # blocking wait for lock
+    flock -x 9
+
+    # release lock when exit
+    trap "flock -u 9" Exit
+
+    inner_stop
+  ) 9>$lock_file
+}
+
+# stop all started services
+function stop_all()
+{
+  DISABLE_STOP_WARNING=true
+
+  local is_restart_all=$1
+  local total_cnt=0
+  local succ_services
+  local succ_idx=0
+  local succ_cnt=0
+  local skip_services
+  local skip_idx=0
+  local skip_cnt=0
+  local fail_services
+  local fail_idx=0
+  local fail_cnt=0
+
+  # preserve order：other services -> sac-registration-center
+  local sorted_services=()
+  local idx=0
+
+  # add other services
+  for service in ${SAC_CTL_ALL_SERVICES[@]}
+  do
+    if [[ ! $service =~ "sac-registration-center" ]]; then
+      sorted_services[$idx]=$service
+      idx=$(($idx+1))
+    fi
+  done
+
+  # add sac-registration-center
+  for service in ${SAC_CTL_ALL_SERVICES[@]}
+  do
+    if [[ $service =~ "sac-registration-center" ]]; then
+      sorted_services[$idx]=$service
+      idx=$(($idx+1))
+    fi
+  done
+
+  # stop services
+  for service in ${sorted_services[@]}
+  do
+    echo "INFO: Stopping service: $service"
+    stop $service > /dev/null 2>&1
+    local ret=$?
+    if [[ $ret -eq 0 ]]; then
+      echo "SUCCESS: service $service is successfully stopped"
+      succ_services[$succ_idx]=$service
+      succ_idx=$(($succ_idx+1))
+      succ_cnt=$(($succ_cnt+1))
+    elif [[ $ret -eq 4 ]]; then
+      echo "SKIPPED: service $service is not running"
+      skip_services[$skip_idx]=$service
+      skip_idx=$(($skip_idx+1))
+      skip_cnt=$(($skip_cnt+1))
+    elif [[ $ret -eq 3 ]]; then
+      echo "ERROR: Fail to stop service $service, please verify log in $SAC_LOG_PATH/$service" >&2
+      fail_services[$fail_idx]=$service
+      fail_idx=$(($fail_idx+1))
+      fail_cnt=$(($fail_cnt+1))
+    elif [[ $ret -eq 18 ]]; then
+      echo "ERROR: Stop service $service timeout" >&2
+      fail_services[$fail_idx]=$service
+      fail_idx=$(($fail_idx+1))
+      fail_cnt=$(($fail_cnt+1))
+    fi
+    total_cnt=$(($total_cnt+1))
+  done
+
+  if [[ $is_restart_all != "true" ]]; then
+    print_res "${succ_services[*]}" "${skip_services[*]}" "${fail_services[*]}" $total_cnt $succ_cnt $skip_cnt $fail_cnt
+    return 1
+  elif [[ $is_restart_all == "true" && $fail_cnt != 0 ]]; then
+    print_res "${succ_services[*]}" "${skip_services[*]}" "${fail_services[*]}" $total_cnt $succ_cnt $skip_cnt $fail_cnt
+    return 1
+  fi
+
+  return 0
+
+}
+
+function restart()
+{
+  DISABLE_STOP_WARNING=true
+  KILL_SERVICE=true
+  stop $SAC_CTL_SERVICE_NAME
+  local ret=$?
+  if [[ $ret -eq 13 || $ret -eq 6 || $ret -eq 3 || $ret -eq 18 ]]; then
+    exit $ret
+  fi
+  start $SAC_CTL_SERVICE_NAME
+  exit $?
+}
+
+function restart_all()
+{
+  DISABLE_STOP_WARNING=true
+  stop_all true
+  local ret=$?
+  if [[ $ret != 0 ]]; then
+    exit $ret
+  fi
+  start_all
+  exit 0
+}
+
+test $# -eq 0 && { help && exit -1; }
+
+ARGS=`getopt -o hvp:s: --long help,version,port:,hostname:,disable-warning,killservice:,versionfile: -- "$@"`
+ret=$?
+test $ret -ne 0 && exit $ret
+
+#get path
+dir_name=`dirname $0`
+if [[ ${dir_name:0:1} != "/" ]]; then
+  SAC_CTL_BIN_PATH=$(pwd)/$dir_name
+else
+  SAC_CTL_BIN_PATH=$dir_name
+fi
+
+cd $SAC_CTL_BIN_PATH/../ && SAC_CTL_INSTALL_PATH=`pwd`
+
+SAC_USER=`ls -l $SAC_CTL_BIN_PATH/sac_ctl | awk '{print $3}'`
+SAC_USER_GROUP=`ls -l $SAC_CTL_BIN_PATH/sac_ctl | awk '{print $4}'`
+CUR_USER=`whoami`
+
+SAC_CTL_LOCK_FILE=$SAC_CTL_INSTALL_PATH/conf/.deploy.lock
+VERSION_FILE=$SAC_CTL_INSTALL_PATH/VERSION
+SAC_LOG_PATH=$SAC_CTL_INSTALL_PATH
+if [[ -f $SAC_CTL_LOCK_FILE ]]; then
+  if [ $CUR_USER == "root" ]
+  then
+    AGENT_PATH=$(su - $SAC_USER -c ". $SAC_CTL_LOCK_FILE; echo \$AGENT_PATH")
+  else
+    . $SAC_CTL_LOCK_FILE
+  fi
+  test -z $SAC_LOG_PATH && SAC_LOG_PATH=$SAC_CTL_INSTALL_PATH
+  if [[ $SAC_LOG_PATH != *"/logs" && $SAC_LOG_PATH != *"logs/" ]]; then
+    if [[ $SAC_LOG_PATH == *"/" ]]; then
+      SAC_LOG_PATH=$SAC_LOG_PATH"logs"
+    else
+      SAC_LOG_PATH=$SAC_LOG_PATH/logs
+    fi
+  fi
+  test -z $AGENT_PATH && AGENT_PATH=$SAC_CTL_INSTALL_PATH
+  if [[ $AGENT_PATH != *"/sac-agent" && $AGENT_PATH != *"sac-agent/" ]]; then
+    if [[ $AGENT_PATH == *"/" ]]; then
+      AGENT_PATH=$AGENT_PATH"sac-agent"
+    else
+      AGENT_PATH=$AGENT_PATH/sac-agent
+    fi
+  fi
+fi
+
+eval set -- "${ARGS}"
+
+while true
+do
+  case "$1" in
+    -v | --version)                         show_version
+                                            exit 0
+                                            ;;
+    -h | --help )                           help
+                                            exit 0
+                                            ;;
+    --disable-warning)                      DISABLE_STOP_WARNING=true
+                                            shift
+                                            ;;
+    --killservice)                          test -z $2 && lack_para "KILL_SERVICE" || KILL_SERVICE=$2
+                                            shift 2
+                                            ;;
+    --versionfile)                          test -z $2 && lack_para "VERSION_FILE" || VERSION_FILE=$2
+                                            shift 2
+                                            ;;
+    --)                                     shift
+                                            break
+                                            ;;
+    *)                                      echo "ERROR: Internal error!"
+                                            exit 64
+                                            ;;
+  esac
+done
+
+case "$1" in
+  list)          mode=$1; shift 1;;
+
+  status)        mode=$1
+                 test -z $2 && shift 1 || { SAC_CTL_SERVICE_NAME=$2 && shift 2; }
+                 ;;
+
+  start)         test -z $2 && lack_para "SERVICE_NAME" || SAC_CTL_SERVICE_NAME=$2
+                 mode=$1; shift 2;;
+
+  startall)      mode=$1; shift 1;;
+
+  stop)          test -z $2 && lack_para "SERVICE_NAME" || SAC_CTL_SERVICE_NAME=$2
+                 mode=$1; shift 2;;
+
+  stopall)       mode=$1; shift 1;;
+
+  restart)       test -z $2 && lack_para "SERVICE_NAME" || SAC_CTL_SERVICE_NAME=$2
+                 mode=$1; shift 2;;
+
+  restartall)    mode=$1; shift 1;;
+
+  *)             echo "ERROR: sac_ctl: unrecognized operation mode \"$1\"" >&2
+                 echo "Try 'sac_ctl --help' for more information."
+                 exit 64
+                 ;;
+esac
+
+if [ "$*" != "" ]; then
+  echo "ERROR: sac_ctl: too many arguments: $*" >&2
+  echo "INFO: Try 'sac_ctl --help' for more information."
+  exit 64
+fi
+
+# check user
+check_user $mode
+
+case $mode in
+  list)             list                                            ;;
+  status)           get_status                                      ;;
+  start)            start $SAC_CTL_SERVICE_NAME || exit $?          ;;
+  startall)         start_all                                       ;;
+  stop)             stop $SAC_CTL_SERVICE_NAME || exit $?           ;;
+  stopall)          stop_all                                        ;;
+  restart)          restart                                         ;;
+  restartall)       restart_all                                     ;;
+esac
+
+exit 0

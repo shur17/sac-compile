@@ -1,0 +1,10 @@
+spring:
+  # 公共配置文件
+  profiles:
+    include: common
+deploy:
+  threshold:
+    task: 10 # 允许同时运行的最大任务数，默认为 10
+    subTask: 5000 # 允许一个任务拥有的最大子任务数，默认为 5000
+  installation:
+    installMaxPoolSize: 3 # 执行run包安装的最大线程数，默认为 3

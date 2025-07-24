@@ -1,0 +1,12 @@
+一、部署步骤
+  1.修改配置文件
+  修改 agent/conf/application.yml 文件，确保配置项 SAC Agent Proxy 连接地址 apAddresses 有效。
+
+  2.启动服务
+  ./sac_agent_ctl start
+
+二、脚本介绍
+  1.sac_agent_ctl
+  sac_agent_ctl 脚本是 SAC Agent 的控制脚本，它主要可以用来启动和停止 SAC Agent 。
+  执行 ./sac_agent_ctl -h 以查看命令支持的更多参数。
+

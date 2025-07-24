@@ -1,0 +1,167 @@
+sac
+├── bin
+│   ├── sac_admin
+│   └── sac_ctl
+├── conf
+│   ├── default-alert-metric-config.yml
+│   ├── default-alert-metric-config.yml.zh
+│   ├── default-alert-rule-tmpl.yml
+│   ├── default-alert-rule-tmpl.yml.zh
+│   ├── default-collect-strategy.yml
+│   ├── deploy.yml
+│   ├── discover.yml
+│   ├── samples
+│   │   ├── sac-agent-proxy
+│   │   │   ├── bootstrap.yml
+│   │   │   ├── logback.xml
+│   │   │   └── sac-agent-proxy.vmoptions
+│   │   ├── sac-alert
+│   │   │   ├── bootstrap.yml
+│   │   │   ├── logback.xml
+│   │   │   └── sac-alert.vmoptions
+│   │   ├── sac-audit
+│   │   │   ├── bootstrap.yml
+│   │   │   ├── logback.xml
+│   │   │   └── sac-audit.vmoptions
+│   │   ├── sac-config
+│   │   │   ├── bootstrap.yml
+│   │   │   ├── logback.xml
+│   │   │   ├── properties
+│   │   │   │   ├── application-common.yml
+│   │   │   │   ├── sac-agent-proxy.yml
+│   │   │   │   ├── sac-audit.yml
+│   │   │   │   ├── sac-deployment.yml
+│   │   │   │   ├── sac-gateway.yml
+│   │   │   │   ├── sac-monitor.yml
+│   │   │   │   ├── sac-statistical.yml
+│   │   │   │   └── sac-user-center.yml
+│   │   │   └── sac-config.vmoptions
+│   │   ├── sac-deployment
+│   │   │   ├── bootstrap.yml
+│   │   │   ├── logback.xml
+│   │   │   └── sac-deployment.vmoptions
+│   │   ├── sac-gateway
+│   │   │   ├── bootstrap.yml
+│   │   │   ├── logback.xml
+│   │   │   └── sac-gateway.vmoptions
+│   │   ├── sac-monitor
+│   │   │   ├── bootstrap.yml
+│   │   │   ├── logback.xml
+│   │   │   └── sac-monitor.vmoptions
+│   │   ├── sac-registration-center
+│   │   │   ├── bootstrap.yml
+│   │   │   ├── logback.xml
+│   │   │   └── sac-registration-center.vmoptions
+│   │   ├── sac-statistical
+│   │   │   ├── bootstrap.yml
+│   │   │   ├── logback.xml
+│   │   │   └── sac-statistical.vmoptions
+│   │   └── sac-user-center
+│   │       ├── bootstrap.yml
+│   │       ├── logback.xml
+│   │       └── sac-user-center.vmoptions
+│   ├── sequoiadb.p12
+│   ├── serverlist.yml
+│   ├── service
+│   │   ├── sac-daemon
+│   │   └── systemd.service
+│   └── sshtrust.yml
+├── lib
+│   ├── java
+│   ├── sac-agent-proxy.jar
+│   ├── sac-alert.jar
+│   ├── sac-audit.jar
+│   ├── sac-config.jar
+│   ├── sac-deployment.jar
+│   ├── sac-gateway.jar
+│   ├── sac-monitor.jar
+│   ├── sac-registration-center.jar
+│   ├── sac-statistical.jar
+│   └── sac-user-center.jar
+├── license
+│   ├── license_en.txt
+│   └── license_zh.txt
+├── plugin
+│   └── sac-agent-plugin-3.6.0.jar
+├── agent
+│   ├── dds-backup-agent
+│   │   ├── bin
+│   │   │   ├── backup-agent-ctl
+│   │   │   ├── backup-agent-ctl_aarch64
+│   │   │   ├── backup-agent-ctl_x86_64
+│   │   │   ├── dds-backup-agent_aarch64
+│   │   │   └── dds-backup-agent_x86_64
+│   │   ├── conf
+│   │   │   ├── local
+│   │   │   └── sample.yaml
+│   │   ├── install.sh
+│   │   └── uninstall.sh
+│   └── sac-agent
+│       ├── bin
+│       │   ├── Readme
+│       │   └── sac_agent_ctl
+│       ├── conf
+│       │   ├── agent.vmoptions
+│       │   ├── application.yml
+│       │   ├── logback.xml
+│       │   └── samples
+│       │       ├── agent.vmoptions
+│       │       ├── application.yml
+│       │       └── logback.xml
+│       ├── lib
+│       │   └── sac-agent-collector-5.4.jar
+│       ├── tools
+│       │   └── on-OOM
+│       │       └── on_out_of_memory.sh
+│       └── VERSION
+│
+├── tools
+|   ├── backup
+│   │   ├── bin
+│   │   │   ├── sac_db_backup
+│   │   │   └── sac_db_restore
+│   │   └── script
+│   │       └── build.js
+|   ├── inspect
+│   │   ├── Readme.md
+│   │   ├── bin
+│   │   │   └── cluster_inspect
+│   │   └── lib
+│   │       └── sac-inspect-tool.jar
+│   ├── daemon
+│   │   ├── sac_daemon
+│   │   └── sac_daemon_ctl
+│   ├── deployment
+│   │   └── sac-deploy-tool.jar
+│   ├── on-OOM
+│   │   └── on_out_of_memory.sh
+│   ├── post-install
+│   │   └── post_install.sh
+│   ├── script
+│   │   └── dds_os_init.sh
+│   ├── ssh
+│   │   └── sdb-ssh-tool.jar
+│   └── upgrade
+│       └── sac-upgrade-tool.jar
+├── VERSION
+└── web
+    ├── css
+    ├── favicon.ico
+    ├── fonts
+    │   ├── element-icons.535877f5.woff
+    │   └── element-icons.732389de.ttf
+    ├── img
+    ├── index.html
+    ├── js
+    └── static
+        ├── iconfont
+        │   ├── demo.css
+        │   ├── demo_index.html
+        │   ├── iconfont.css
+        │   ├── iconfont.js
+        │   ├── iconfont.json
+        │   ├── iconfont.svg
+        │   ├── iconfont.ttf
+        │   ├── iconfont.woff
+        │   └── iconfont.woff2
+        └── iconfont.js

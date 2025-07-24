@@ -1,0 +1,189 @@
+#!/bin/bash
+
+#   exit code list:
+#   0     successful termination
+#   1     no such file
+#   64    command line usage error
+#   77    permission denied
+
+# check user
+# if neither root nor sac user: exit with PERMISSION_DENIED
+function check_user()
+{
+  SAC_USER=`ls -l $dir_name/sac_db_restore | awk '{print $3}'`
+
+  local cur_user=`whoami`
+  if [ "$cur_user" != "$SAC_USER" -a "$cur_user" != "root" ]
+  then
+    echo "ERROR: './sac_db_restore' requires SAC_USER [$SAC_USER] permission" >&2
+    exit 77
+  fi
+}
+
+# if root: change to sac user to execute command
+# if sac user: execute command
+function exec_cmd()
+{
+   local cmd="$1"
+   local cur_user=`whoami`
+
+   if [ $cur_user == "root" ]
+   then
+      su - $SAC_USER -c "${cmd}"
+      return $?
+   else
+      eval "${cmd}"
+      return $?
+   fi
+}
+
+# print lack param message
+# arg1: parameter name
+function lack_para()
+{
+  local para_name=$1
+  echo "ERROR: sac_ctl: no parameter \"$para_name\" specified" >&2
+  echo "Try 'sac_ctl --help' for more information."
+  exit 64
+}
+
+function help()
+{
+  echo "Usage:"
+  echo "  sac_db_restore -d <restore database name> -r <restore path> [--port <port>] [-u <username>] [-p <password>]"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help                    output help message"
+  echo "      --port                    server port, default 27017"
+  echo "  -d, --dbname                  the name of the sac database to be restored"
+  echo "  -r, --restorepath             directory to restore"
+  echo "  -u, --username                username for database authentication"
+  echo "  -p, --password                password for database authentication"
+  echo "      --authenticationDatabase   database that holds the user's credentials, default admin"
+}
+
+function restore()
+{
+  local install_dir=$(getDdsInstallPath)
+  local mongorestorePath="$install_dir/bin/mongorestore"
+  
+  if [ -z $SAC_USERNAME ]; then
+    exec_cmd "$mongorestorePath --host 127.0.0.1 --port $SAC_DATABASE_PORT --db=\"$SAC_DATABASE_NAME\" $SAC_RESTORE_PATH"
+  else
+    exec_cmd "$mongorestorePath --host 127.0.0.1 --port $SAC_DATABASE_PORT --authenticationDatabase $SAC_AUTH_DATABASE -u '$SAC_USERNAME' -p '$SAC_PASSWORD' --db=\"$SAC_DATABASE_NAME\" $SAC_RESTORE_PATH"
+  fi
+  rc=$?
+  if [ "$rc" != "0" ]; then
+     echo "Error: failed to restore."
+     exit $rc
+  fi
+}
+
+function checkDdsDefaultFile()
+{
+  if [ ! -f "/etc/default/sequoiadb-dds" ]; then
+     echo "No such file: /etc/default/sequoiadb-dds"
+     exit 1
+  fi
+}
+
+function checkDdsBinFile()
+{
+  local install_dir=$(getDdsInstallPath)
+  local mongorestorePath="$install_dir/bin/mongorestore"
+
+  if [ ! -f "$mongorestorePath" ]; then
+     echo "No such file: $mongorestorePath"
+     exit 1
+  fi
+}
+
+function getDdsInstallPath()
+{
+  file_content=$(cat /etc/default/sequoiadb-dds)
+  install_dir=$(grep -E "^INSTALL_DIR=" <<< "$file_content" | cut -d "=" -f 2)
+  echo "$install_dir"
+}
+
+#get path
+current_path=$(pwd)
+dir_name=$(cd $(dirname $0);pwd)
+
+SAC_DATABASE_PORT=27017
+SAC_AUTH_DATABASE="admin"
+
+check_user
+checkDdsDefaultFile
+checkDdsBinFile
+
+ARGS=`getopt -o hd:r:u:p: --long help,host:,port:,dbname:,restorepath:,username:,password:,authenticationDatabase: -- "$@"`
+ret=$?
+test $ret -ne 0 && exit $ret
+
+test $# -eq 0 && { help && exit -1; }
+eval set -- "${ARGS}"
+
+while true
+do
+  case "$1" in
+    -h | --help)                           help
+                                            exit 0
+                                            ;;
+    --port)                                 SAC_DATABASE_PORT=$2
+                                            shift 2
+                                            ;;
+    -d | --dbname)                          SAC_DATABASE_NAME=$2
+                                            shift 2
+                                            ;;
+    -r | --restorepath)                     SAC_RESTORE_PATH=$2
+                                            shift 2
+                                            ;;
+    -u | --username)                        SAC_USERNAME=$2
+                                            shift 2
+                                            ;;
+    -p | --password)                        SAC_PASSWORD=$2
+                                            shift 2
+                                            ;;
+    --authenticationDatabase)               SAC_AUTH_DATABASE=$2
+                                            shift 2
+                                            ;;
+    --)                                     shift
+                                            break
+                                            ;;
+    *)                                      echo "ERROR: Internal error!"
+                                            exit 64
+                                            ;;
+  esac
+done
+
+if [ "$*" != "" ]; then
+  echo "ERROR: sac_db_restore: too many arguments: $*" >&2
+  echo "Try './sac_db_restore --help' for more information."
+  exit 64
+fi
+
+test -z $SAC_DATABASE_PORT && lack_para "port"
+test -z $SAC_DATABASE_NAME && lack_para "dbname"
+test -z $SAC_RESTORE_PATH && lack_para "out"
+
+if [ ! -d "$SAC_RESTORE_PATH" ]; then
+  echo "Error: no such directory, path=$SAC_RESTORE_PATH"
+  exit 1
+fi
+
+if [ ! -z $SAC_USERNAME ] && [ -z $SAC_PASSWORD ]; then
+  read -s -p "Password: " SAC_PASSWORD
+  if [ ! -z $SAC_USERNAME ] && [ -z $SAC_PASSWORD ]; then
+    lack_para "password"
+  fi
+fi
+
+cd "$current_path"
+SAC_RESTORE_PATH=$(cd "$SAC_RESTORE_PATH";pwd)
+cd $dir_name
+
+echo "Info: start restore."
+
+restore
+
+echo "Info: restore completed."

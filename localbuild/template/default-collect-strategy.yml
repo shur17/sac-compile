@@ -1,0 +1,153 @@
+sac:
+  collectStrategies:
+    - name: "SDB_CS"
+      enable: true
+      interval: 30000
+
+    - name: "SDB_PARTITION"
+      enable: true
+      interval: 30000
+
+    - name: "SQL_GROUP_META"
+      enable: true
+      interval: 30000
+
+    - name: "SQL_NODE_META"
+      enable: true
+      interval: 30000
+
+    - name: "SQL_DATABASE_META"
+      enable: true
+      interval: 30000
+
+    - name: "SQL_TABLE_META"
+      enable: true
+      interval: 10000
+
+    - name: "SDB_DOMAIN_META"
+      enable: true
+      interval: 30000
+
+    - name: "SDB_GROUP_META"
+      enable: true
+      interval: 30000
+
+    - name: "SDB_NODE_META"
+      enable: true
+      interval: 30000
+
+    - name: "SDB_MAPPING_META"
+      enable: true
+      interval: 30000
+
+    - name: "SDB_CS_META"
+      enable: true
+      interval: 30000
+
+    - name: "SDB_CL_META"
+      enable: true
+      interval: 30000
+
+    - name: "SQL_AGGR_GROUP"
+      enable: true
+      interval: null
+
+    - name: "SQL_NODE"
+      enable: true
+      interval: 10000
+
+    - name: "SDB_AGGR_SDB"
+      enable: true
+      interval: null
+
+    - name: "SDB_AGGR_DOMAIN"
+      enable: true
+      interval: null
+
+    - name: "SDB_AGGR_GROUP"
+      enable: true
+      interval: null
+
+    - name: "SDB_NODE"
+      enable: true
+      interval: 10000
+
+    - name: "SDB_AGGR_CS"
+      enable: true
+      interval: null
+
+    - name: "SDB_AGGR_CL"
+      enable: true
+      interval: null
+
+    - name: "SDB_AGGR_SHARD"
+      enable: true
+      interval: null
+
+    - name: "SQL_NODE_CONFIG"
+      enable: true
+      interval: 300000
+
+    - name: "SQL_NODE_HEALTH"
+      enable: true
+      interval: 5000
+
+    - name: "SQL_QUERY"
+      enable: true
+      interval: 1000
+
+    - name: "SQL_SESSION"
+      enable: true
+      interval: 30000
+
+    - name: "SQL_INDEX"
+      enable: true
+      interval: 10000
+
+    - name: "SDB_NODE_CONFIG"
+      enable: true
+      interval: 300000
+
+    - name: "SDB_NODE_HEALTH"
+      enable: true
+      interval: 5000
+
+    - name: "SDB_QUERY"
+      enable: true
+      interval: 5000
+
+    - name: "SDB_SESSION"
+      enable: true
+      interval: 10000
+
+    - name: "SDB_TRANSACTION"
+      enable: true
+      interval: 10000
+
+    - name: "SDB_DEADLOCK"
+      enable: true
+      interval: 10000
+
+    - name: "SDB_INDEX"
+      enable: true
+      interval: 10000
+
+    - name: "SDB_ACCESSPLAN"
+      enable: true
+      interval: 60000
+
+    - name: "SQL_NODE_MONITOR"
+      enable: true
+      interval: 60000
+
+    - name: "SDB_NODE_MONITOR"
+      enable: true
+      interval: 60000
+
+    - name: "SQL_PERF_NODE_LOG"
+      enable: true
+      interval: 30000
+
+    - name: "SDB_PERF_NODE_LOG"
+      enable: true
+      interval: 30000

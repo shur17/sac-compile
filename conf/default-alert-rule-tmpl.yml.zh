@@ -1,0 +1,667 @@
+rules:
+  - name: "SQL_Too_Many_Aborted_Connects"
+    desc: "单位时间内，服务端中断连接的次数过高"
+    scope: "cluster"
+    eval_metric: "SQL_Aborted_Connects_5m"
+    eval_rules:
+      - operator: ">"
+        threshold: 10
+        severity: 1
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 服务端中断连接的次数过高"
+    description_tmpl: "${alert_target} 服务端中断连接的次数过高，5分钟内超过 ${alert_threshold} 次，当前 ${alert_value} 次"
+
+  - name: "SQL_Too_Many_Aborted_Clients"
+    desc: "单位时间内，客户端中断连接的次数过高"
+    scope: "cluster"
+    eval_metric: "SQL_Aborted_Clients_5m"
+    eval_rules:
+      - operator: ">"
+        threshold: 10
+        severity: 1
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 客户端中断连接的次数过高"
+    description_tmpl: "${alert_target} 客户端中断连接的次数过高，5分钟内超过 ${alert_threshold} 次，当前 ${alert_value} 次"
+
+  - name: "SQL_Too_Many_Threads_Connects"
+    desc: "SQL实例连接数过高"
+    scope: "cluster"
+    eval_metric: "SQL_Threads_Connects_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 80
+        severity: 2
+        fire_duration: 120
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 实例连接数过高"
+    description_tmpl: "${alert_target} 实例连接数持续 ${alert_duration} 秒超过最大连接数 ${alert_labels.max_connections} 的 ${alert_threshold}%，当前连接数 ${alert_labels.threads_connected}"
+
+  - name: "SQL_Too_Many_Threads_Running"
+    desc: "SQL实例活动线程数过高"
+    scope: "cluster"
+    eval_metric: "SQL_Threads_Running"
+    eval_rules:
+      - operator: ">"
+        threshold: 300
+        severity: 2
+        fire_duration: 120
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 实例活动线程数过高"
+    description_tmpl: "${alert_target} 实例活动线程数持续 ${alert_duration} 秒超过 ${alert_threshold} 次，当前 ${alert_value} 次"
+
+  - name: "SQL_Too_Many_New_Threads_Running"
+    desc: "SQL实例新增活动线程数过高"
+    scope: "cluster"
+    eval_metric: "SQL_Threads_Running_5m"
+    eval_rules:
+      - operator: ">"
+        threshold: 50
+        severity: 2
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 实例新增活动线程数过高"
+    description_tmpl: "${alert_target} 实例新增活动线程数过高，5分钟内超过 ${alert_threshold} 次，当前 ${alert_value} 次"
+
+  - name: "SQL_Too_Many_Opened_Files"
+    desc: "SQL实例打开的文件句柄数过高"
+    scope: "cluster"
+    eval_metric: "SQL_Opened_Files_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 80
+        severity: 2
+        fire_duration: 120
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 实例打开的文件句柄数过高"
+    description_tmpl: "${alert_target} 实例打开的文件句柄数持续 ${alert_duration} 秒超过 open_files_limit(${alert_labels.open_files_limit}) 的 ${alert_threshold}%，当前文件句柄数 ${alert_labels.open_files}"
+
+  - name: "SQL_Error_Instance"
+    desc: "SQL实例无法访问"
+    scope: "cluster"
+    eval_metric: "SQL_Error_Instance"
+    eval_rules:
+      - severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} 实例无法访问"
+    description_tmpl: "${alert_target} 实例无法访问，Flag:${alert_labels.flag}, Detail:${alert_labels.detail}"
+
+  # SDB
+  - name: "SDB_Error_Node"
+    desc: "SDB实例无法访问"
+    scope: "cluster"
+    eval_metric: "SDB_Error_Node"
+    eval_rules:
+      - severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点无法访问"
+    description_tmpl: "${alert_target} 节点无法访问，Flag:${alert_labels.flag}, Detail:${alert_labels.detail}"
+
+  - name: "SDB_Node_Status"
+    desc: "SDB节点状态异常"
+    scope: "cluster"
+    eval_metric: "SDB_Node_Status"
+    eval_rules:
+      - operator: "=="
+        threshold: "FullSync"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "Rebuilding"
+        severity: 2
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} 节点状态异常"
+    description_tmpl: "${alert_target} 节点状态异常，Status=${alert_value}"
+
+  - name: "SDB_Node_FTStatus"
+    desc: "SDB节点容错状态异常"
+    scope: "cluster"
+    eval_metric: "SDB_Node_FTStatus"
+    eval_rules:
+      - operator: "=="
+        threshold: "NOSPC"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "DEADSYNC"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "TRANSERR"
+        severity: 2
+        fire_duration: 0
+      - operator: "=="
+        threshold: "SLOWNODE"
+        severity: 3
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} 节点容错状态异常"
+    description_tmpl: "${alert_target} 节点容错状态异常，FTStatus=${alert_value}"
+
+  - name: "SDB_LSN_Diff_Too_Large"
+    desc: "SDB组内LSN差异过大"
+    scope: "cluster"
+    eval_metric: "SDB_LSN_Diff_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 20
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 所在数据组 ${alert_labels.group_name} 的组内LSN差异过大"
+    description_tmpl: "${alert_target} 所在数据组 ${alert_labels.group_name} 的组内LSN差异持续 ${alert_duration} 秒超过 ${alert_threshold}%，当前为 ${alert_value}%"
+
+  - name: "SDB_Connections_Exceeded_MaxPool_Limit"
+    desc: "SDB连接数达到最大线程池预警"
+    scope: "cluster"
+    eval_metric: "SDB_Connects_Maxpool_ratio"
+    eval_rules:
+      - operator: ">="
+        threshold: 100
+        severity: 3
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点连接数占最大线程池比例过大"
+    description_tmpl: "${alert_target} 节点连接数持续 ${alert_duration} 秒超过 MaxPool(${alert_labels.maxpool}) 的 ${alert_threshold}%，当前为 ${alert_value}%  (${alert_labels.total_num_connects})"
+
+  - name: "SDB_Too_Many_Connects"
+    desc: "SDB连接数达到最大连接数预警"
+    scope: "cluster"
+    eval_metric: "SDB_Connects_Maxconn_ratio"
+    eval_rules:
+      - operator: ">="
+        threshold: 80
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点连接数过多"
+    description_tmpl: "${alert_target} 节点连接数持续 ${alert_duration} 秒超过 MaxConn(${alert_labels.maxconn}) 的 ${alert_threshold}%，当前为 ${alert_value}% (${alert_labels.total_num_connects})"
+
+  - name: "SDB_Log_Space_Insufficient"
+    desc: "SDB复制日志剩余空间不足"
+    scope: "cluster"
+    eval_metric: "SDB_FreeLogSpace_ratio"
+    eval_rules:
+      - operator: "<"
+        threshold: 80
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - "<"
+      - "<="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点复制日志剩余空间不足"
+    description_tmpl: "${alert_target} 节点复制日志剩余空间持续 ${alert_duration} 秒小于 ${alert_threshold}%，当前为 ${alert_value}%"
+
+  - name: "SDB_Insufficient_Data_Directory_Space"
+    desc: "SDB数据路径空间不足"
+    scope: "cluster"
+    eval_metric: "SDB_DiskFreeSpace_ratio"
+    eval_rules:
+      - operator: "<"
+        threshold: 20
+        severity: 2
+        fire_duration: 0
+    operator_options:
+      - "<"
+      - "<="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点数据路径空间不足"
+    description_tmpl: "${alert_target} 节点数据路径空间不足 ${alert_threshold}%，当前为 ${alert_value}%"
+
+  - name: "SDB_Primary_Node_Switch"
+    desc: "SDB主节点切换"
+    scope: "cluster"
+    eval_metric: "SDB_Primary_Node_Switch"
+    eval_rules:
+      - severity: 2
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: -1
+    summary_tmpl: "${alert_target} 已降为备节点"
+    description_tmpl: "${alert_target} 已降为备节点"
+
+  # SDB DDS
+  - name: "DDS_Error_Node"
+    desc: "SequoiaDB DDS 节点无法访问"
+    scope: "cluster"
+    eval_metric: "DDS_Error_Node"
+    eval_rules:
+      - severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点无法访问"
+    description_tmpl: "${alert_target} 节点无法访问, Flag:${alert_labels.flag}, Detail:${alert_labels.detail}"
+
+  - name: "DDS_Node_Status"
+    desc: "SequoiaDB DDS 节点状态异常"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Status"
+    eval_rules:
+      - operator: "=="
+        threshold: "DOWN"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "RECOVERING"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "ROLLBACK"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "STARTUP2"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "UNKNOWN"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "REMOVED"
+        severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} 节点状态异常"
+    description_tmpl: "${alert_target} 节点状态异常, Status=${alert_value}"
+
+  - name: "DDS_Node_FTStatus"
+    desc: "SequoiaDB DDS 节点容错状态异常"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Replication_Latency"
+    eval_rules:
+      - operator: ">="
+        threshold: 300000
+        severity: 2
+        fire_duration: 30
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 30
+    resolved_interval: 60
+    summary_tmpl: "${alert_target} 节点复制延迟过长"
+    description_tmpl: "${alert_target} 节点容错状态异常，节点间复制延迟过长，当前复制延迟延长时间为：${alert_value}"
+
+  - name: "DDS_Too_Many_Connects"
+    desc: "SequoiaDB DDS 连接数达到最大连接数预警"
+    scope: "cluster"
+    eval_metric: "DDS_Connects_ratio"
+    eval_rules:
+      - operator: ">="
+        threshold: 80
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点连接数过多"
+    description_tmpl: "${alert_target} 节点连接数持续 ${alert_duration} 秒超过最大连接数(${alert_labels.max_connects}) 的 ${alert_threshold}%， 当前为 ${alert_value}% (${alert_labels.current_connects})"
+
+  - name: "DDS_Too_Many_Cursors"
+    desc: "SequoiaDB DDS 游标数达到最大游标数预警"
+    scope: "cluster"
+    eval_metric: "DDS_Cursors_ratio"
+    eval_rules:
+      - operator: ">="
+        threshold: 80
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点游标数过多"
+    description_tmpl: "${alert_target} 节点游标数持续 ${alert_duration} 秒超过最大游标数(${alert_labels.max_cursors}) 的 ${alert_threshold}%， 当前为 ${alert_value}% (${alert_labels.open_cursors})"
+
+  - name: "DDS_Primary_Node_Switch"
+    desc: "SequoiaDB DDS 主节点切换"
+    scope: "cluster"
+    eval_metric: "DDS_Primary_Node_Switch"
+    eval_rules:
+      - severity: 2
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: -1
+    summary_tmpl: "${alert_target} 已降为备节点"
+    description_tmpl: "${alert_target} 已降为备节点"
+    
+  - name: "DDS_Node_CPU_Hard_Limit"
+    desc: "SequoiaDB DDS CPU 达到 CPU 硬限制告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_CPU_Hard_limit_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 60
+        suggestion: "请检查集群负载情况，是否存在非预期的并发操作；如果负载符合预期，请重新分配资源，否则应降低并发数"
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点 CPU 占用过高."
+    description_tmpl: "${alert_target} CPU 使用率超过 ${alert_threshold}% 持续了 ${alert_duration} 秒, 当前为 ${alert_value}%."
+
+  - name: "DDS_Node_Heap_Soft_Limit"
+    desc: "SequoiaDB DDS 堆栈大小达到内存软限制告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Heap_Soft_Limit_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 85
+        severity: 3
+        fire_duration: 0
+        suggestion: "请检查集群负载情况，是否存在非预期的并发操作；如果负载符合预期，请重新分配资源，否则应降低并发数"
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点堆栈大小过高"
+    description_tmpl: "${alert_target} 节点堆栈大小持续 ${alert_duration} 秒超过了 ${alert_threshold}% 当前${alert_value}%，堆栈大小 (${alert_labels.heap_size}MB) ，软限制大小 (${alert_labels.soft_limit}MB)"
+
+  - name: "DDS_Node_Actively_Reclaim_Memory"
+    desc: "SequoiaDB DDS 积极回收内存告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Actively_Reclaim_Memory"
+    eval_rules:
+      - operator: "=="
+        threshold: true
+        severity: 1
+        fire_duration: 0
+        suggestion: "请检查集群负载情况，是否存在非预期的并发操作；如果负载符合预期，请重新分配资源，否则应降低并发数"
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点积极回收内存"
+    description_tmpl: "${alert_target} 节点积极回收内存，当前软限制为 (${alert_labels.soft_limit}MB) ，堆栈大小为 ${alert_labels.heap_size}MB."
+
+  - name: "DDS_Node_Memory_Hard_Limit"
+    desc: "SequoiaDB DDS 物理内存达到内存硬限制告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Memory_Hard_Limit_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 80
+        severity: 0
+        fire_duration: 0
+        suggestion: "请尽快提高该节点的内存资源或大幅降低请求数，否则可能引起节点崩溃"
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点物理内存占用过高"
+    description_tmpl: "${alert_target} 节点内存占用了(${alert_labels.mem_resident}MB) 持续了 ${alert_duration} 秒超过了内存硬限制(${alert_labels.hardLimit_memory}MB) 的 ${alert_threshold}%，当前为 ${alert_value}%."
+
+  - name: "DDS_Node_Memory_Soft_Limit"
+    desc: "SequoiaDB DDS 物理内存达到操作系统内存软限制告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Memory_Soft_Limit_ratio"
+    eval_rules:
+      - operator: ">"
+        threshold: 100
+        severity: 3
+        fire_duration: 0
+        suggestion: "请检查集群负载情况，是否存在非预期的并发操作；如果负载不符合预期，应降低并发数，避免引起节点崩溃"
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点物理内存占用过高"
+    description_tmpl: "${alert_target} 节点的物理内存占用(${alert_labels.mem_resident}MB) 持续 ${alert_duration} 秒超过操作系统内存软限制(${alert_labels.softLimit_memory_mb}MB) 的 ${alert_threshold}%，当前为 ${alert_value}%."
+
+  - name: "DDS_Node_Concurrent_Read_Tickets"
+    desc: "SequoiaDB DDS 节点 concurrent read available tickets 指标异常告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Concurrent_Read_Tickets"
+    eval_rules:
+      - operator: "<="
+        threshold: 5
+        severity: 2
+        fire_duration: 300
+      - operator: "=="
+        threshold: 0
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - "<"
+      - "<="
+      - "=="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点 concurrent read available tickets 指标异常"
+    description_tmpl: "${alert_target} 节点的 concurrent read available tickets 指标持续 ${alert_duration} 秒小于等于 ${alert_threshold} , 当前为 ${alert_value}."
+
+  - name: "DDS_Node_Concurrent_Write_Tickets"
+    desc: "SequoiaDB DDS 节点 concurrent write available tickets 指标异常告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Concurrent_Write_Tickets"
+    eval_rules:
+      - operator: "<="
+        threshold: 5
+        severity: 2
+        fire_duration: 300
+      - operator: "=="
+        threshold: 0
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - "<"
+      - "<="
+      - "=="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点 concurrent write available tickets 指标异常"
+    description_tmpl: "${alert_target} 节点的 concurrent write available tickets 指标持续 ${alert_duration} 秒小于等于 ${alert_threshold} , 当前为 ${alert_value}."
+
+  - name: "DDS_Node_Queued_Read"
+    desc: "SequoiaDB DDS 节点 queued read 指标异常告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Queued_Read"
+    eval_rules:
+      - operator: ">"
+        threshold: 10
+        severity: 2
+        fire_duration: 60
+      - operator: ">"
+        threshold: 30
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点 queued read 指标异常"
+    description_tmpl: "${alert_target} 节点的 queued read 指标持续 ${alert_duration} 秒大于等于 ${alert_threshold} , 当前为 ${alert_value}."
+
+  - name: "DDS_Node_Queued_Write"
+    desc: "SequoiaDB DDS 节点 queued write 指标异常告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Queued_Write"
+    eval_rules:
+      - operator: ">"
+        threshold: 10
+        severity: 2
+        fire_duration: 60
+      - operator: ">"
+        threshold: 30
+        severity: 1
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "${alert_target} 节点 queued write 指标异常"
+    description_tmpl: "${alert_target} 节点的 queued write 指标持续 ${alert_duration} 秒大于等于 ${alert_threshold} , 当前为 ${alert_value}."
+
+  - name: "DDS_Node_Vector_Index_Cache_Usage"
+    desc: "SequoiaDB DDS 节点向量索引缓存使用率过高告警"
+    scope: "cluster"
+    eval_metric: "DDS_Node_Vector_Index_Cache_Usage"
+    eval_rules:
+      - operator: ">"
+        threshold: 75
+        severity: 3
+        fire_duration: 0
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "节点 ${alert_target} 的向量索引缓存使用率过高"
+    description_tmpl: "节点 ${alert_target} 的向量索引缓存使用率持续 ${alert_duration} 秒大于等于 ${alert_threshold}% , 当前为 ${alert_value}%."
+
+  - name: "DDS_Error_Auto_Backup_Task"
+    desc: "SequoiaDB DDS 周期备份任务执行失败"
+    scope: "cluster"
+    eval_metric: "DDS_Error_Auto_Backup_Task"
+    eval_rules:
+      - severity: 1
+        fire_duration: 0
+        suggestion: "请根据错误消息排查原因，建议您在解决问题后重试手动备份"
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "集群 ID 是 ${alert_labels.target} 的集群的周期备份任务执行失败"
+    description_tmpl: "集群 ID 是 ${alert_labels.target} 的集群的周期备份任务执行失败, Detail:${alert_labels.detail}"
+
+  # Server
+  - name: "Server_CPU_Usage"
+    desc: "服务器CPU使用率"
+    scope: "host"
+    eval_metric: "Server_CPU_Usage"
+    eval_rules:
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 60
+      - operator: ">"
+        threshold: 70
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "服务器 ${alert_target} 的 CPU 使用率较高"
+    description_tmpl: "服务器 ${alert_target} 的 CPU 使用率持续 ${alert_duration} 秒超过 ${alert_threshold}%，当前为 ${alert_value}%"
+
+  - name: "Server_Memory_Usage"
+    desc: "服务器内存使用率"
+    scope: "host"
+    eval_metric: "Server_Memory_Usage"
+    eval_rules:
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 60
+      - operator: ">"
+        threshold: 70
+        severity: 2
+        fire_duration: 60
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "服务器 ${alert_target} 的内存使用率较高"
+    description_tmpl: "服务器 ${alert_target} 的内存使用率持续 ${alert_duration} 秒超过 ${alert_threshold}%，当前为 ${alert_value}%"
+
+  - name: "Server_Disk_Usage"
+    desc: "服务器磁盘使用率"
+    scope: "host"
+    eval_metric: "Server_Disk_Usage"
+    eval_rules:
+      - operator: ">"
+        threshold: 90
+        severity: 1
+        fire_duration: 0
+      - operator: ">"
+        threshold: 70
+        severity: 2
+        fire_duration: 0
+    operator_options:
+      - ">"
+      - ">="
+    evaluation_interval: 60
+    resolved_interval: 120
+    summary_tmpl: "磁盘 ${alert_target} 使用率较高"
+    description_tmpl: "磁盘 ${alert_target} 使用率持续 ${alert_duration} 秒超过 ${alert_threshold}%，当前为 ${alert_value}%"
+
+  - name: "Agent_Status"
+    desc: "Agent 状态异常"
+    scope: "host"
+    eval_metric: "Agent_Status"
+    eval_rules:
+      - operator: "=="
+        threshold: "Timeout"
+        severity: 1
+        fire_duration: 0
+      - operator: "=="
+        threshold: "Offline"
+        severity: 1
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: 0
+    summary_tmpl: "${alert_target} agent 状态异常"
+    description_tmpl: "Agent 状态异常，可能是由于目标主机 ${alert_target} 故障或 Agent 节点异常，Status=${alert_value}"

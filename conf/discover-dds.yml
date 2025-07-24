@@ -1,0 +1,21 @@
+#conf/discover-dds.yml
+
+#集群名
+clusterName: ""
+
+#SAC相关信息
+sac:
+  #SAC网关地址
+  gatewayUrl: "127.0.0.1:28000"
+  #SAC是否启用 SSL
+  sslEnabled: false
+
+#DDS数据库信息
+dds:
+  #DDS节点地址，格式为 <ip:port>
+  address: "<dds address>"
+  #DDS的鉴权用户名
+  #user: ""
+  #DDS的鉴权密码，如果不设置密码，会通过交互方式请求输入
+  #passwd: ""
+   

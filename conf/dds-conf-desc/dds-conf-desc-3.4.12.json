@@ -1,0 +1,44 @@
+[
+  {
+    "name": "setParameter:softMemoryLimitMB",
+    "supported": true,
+    "type": "num",
+    "role": [
+      "config",
+      "data"
+    ],
+    "desc": "Soft limit of memory usage. When the threshold is exceeded, the operation will be limited.",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "effective_online": true,
+    "support_online_modify": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "setParameter:oomFlowControlOperationFlags",
+    "supported": true,
+    "type": "enum",
+    "role": [
+      "config",
+      "data"
+    ],
+    "desc": "When memory current limiting is triggered, whether to also enable current limiting for read operations.",
+    "enum_value": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "default_value": 1,
+    "modifiedable": true,
+    "effective_online": true,
+    "support_online_modify": true,
+    "support_batch_modify": true
+  }
+]

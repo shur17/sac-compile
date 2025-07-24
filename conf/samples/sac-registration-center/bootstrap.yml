@@ -1,0 +1,46 @@
+info:
+  app:
+    name: sac-registration-center
+    version: '@project.version@'
+server:
+  port: {{ server-port }}
+spring:
+  application:
+    name: ${info.app.name}
+  security:
+    basic:
+      enabled: true
+    user:
+      name: sacadmin
+      password: {{ security-user-password }}
+  cloud:
+    loadbalancer:
+      health-check:
+        refetch-instances: true
+        # 服务列表刷新间隔，10s
+        refetch-instances-interval: 10000
+        repeat-health-check: false
+  main:
+    # 允许循环依赖
+    allow-circular-references: true
+
+eureka:
+  client:
+    fetchRegistry: false
+    registerWithEureka: true
+    serviceUrl:
+      defaultZone: {{ eureka-client-service-url-default-zone }}
+  server:
+    # 禁用 Eureka 的 ReadOnlyMap 缓存
+    # 使用 ReadOnlyMap 缓存可以减少 ReadWriteMap 读写锁的占用，增大吞吐量
+    # 将 ReadOnlyMap 禁用，可以避免多层缓存的实例列表不一致的情况
+    use-read-only-response-cache: false
+    # 启用主动失效，并且每次主动失效检测间隔为 3s
+    eviction-interval-timer-in-ms: 3000
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 1200000

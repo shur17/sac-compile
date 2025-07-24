@@ -1,0 +1,2122 @@
+[
+  {
+    "name": "dbpath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定数据文件存放路径。2. 如果不指定，则默认为当前路径。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "indexpath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定索引文件存放路径。2. 如果不指定，则默认与'dbpath'相同。",
+    "modifiedable": false,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "confpath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定配置文件路径（不包含文件名），系统会在confpath下寻找sdb.conf。\n2. sdb.conf中填入需要的配置项，配制方法为：参数名 = 参数值。如 svcname=11810；diaglevel=3\n3. 如果不指定此参数，系统默认在当前路径寻找sdb.conf。\n4. sdb.conf可以不存在。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "logpath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 副本节点在进行数据同步时会生成同步日志。此参数用来指定同步日志的路径。\n2. 如果不指定，则默认路径为：数据文件路径/replicalog",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "diagpath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定诊断日志存放目录。\n2. 如果不指定，则默认为：数据文件路径/diaglog",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "auditpath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定审计日志存放目录。\n2. 如果不指定，则默认为：数据文件路径/diaglog",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "diagnum",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 指定诊断日志文件最大数量。\n2. 如果不指定，则默认为：20，-1表示不限制，取值范围[-1, 2^31 - 1]。",
+    "num_validator": {
+      "left": {
+        "value": -1,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 20,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "auditnum",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 指定审计日志文件最大数量。\n2. 如果不指定，则默认为：20，-1表示不限制，取值范围[-1, 2^31 - 1]。",
+    "num_validator": {
+      "left": {
+        "value": -1,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 20,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "bkuppath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定备份文件生成目录。\n2. 如果不指定，则默认为：数据文件路径/bakfile",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "wwwpath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定WEB服务根目录。\n2. 如果不指定，则默认为：数据文件路径/www。\n3. 仅对OM生效。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false,
+    "hidden": true
+  },
+  {
+    "name": "maxpool",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 指定线程池内线程数量。\n2. 如果不指定，则默认为50，取值范围是[0,10000]。",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 10000,
+        "include": true
+      }
+    },
+    "default_value": 50,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "svcname",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定本地服务端口。\n2. 如果不指定则默认为11810端口用于协调节点，11800用于编目节点，11820用于数据节点。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "replname",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定数据同步平面端口。\n2. 如果不指定则默认为svcname+1。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "shardname",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定shard平面端口。\n2. 如果不指定则默认为svcname+2。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "catalogname",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定catalog平面端口。\n2. 如果不指定则默认为svcname+3。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "httpname",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定http端口。\n2. 如果不指定则默认为svcname+4。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "omname",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定OM端口。\n2. 如果不指定则默认为svcname+5。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false,
+    "hidden": true
+  },
+  {
+    "name": "diaglevel",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 指定诊断日志打印级别。SequoiaDB中诊断日志从0-5分别代表：SEVERE, ERROR, EVENT, WARNING, INFO, DEBUG。\n2. 如果不指定，则默认为WARNING。",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 5,
+        "include": true
+      }
+    },
+    "default_value": 3,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "auditmask",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定审计日志打印掩码。SequoiaDB中审计日志类型有：ACCESS,CLUSTER,SYSTEM,DML,DDL,DCL,DQL,INSERT,DELETE,UPDATE,OTHER。\n2. 如果不指定，则默认为\"SYSTEM|DDL|DCL\", ALL取值表示开启所有,NONE关闭全部。\n3. 更详细的内容可参考[审计日志]",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "role",
+    "supported": true,
+    "type": "enum",
+    "desc": "1. 指定服务角色。SequoiaDB分别以data/coord/catalog/standalone代表：数据节点/协调节点/编目节点/单机。\n2. 如果不指定则默认为单机。",
+    "enum_value": [
+      "data",
+      "coord",
+      "catalog",
+      "standalone"
+    ],
+    "default_value": "standalone",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "catalogaddr",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定编目节点的地址。配置形式为\"hostname1:catalogname1,hostname2:catalogname2,...\"。\n2. 需要至少指定一个编目节点的地址。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "logfilesz",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 指定同步日志文件的大小。合法输入为64（MB）- 2048（MB）。\n2. 如果不指定，则默认为64（MB）。\n3. 同步日志的总大小（logfilesz * logfilenum）决定了在同步过程中的容错能力，日志越大则触发全量同步的可能性越小。",
+    "num_validator": {
+      "left": {
+        "value": 64,
+        "include": true
+      },
+      "right": {
+        "value": 2048,
+        "include": true
+      }
+    },
+    "default_value": 64,
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "logfilenum",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 指定同步日志文件的数量。\n2. 如果不指定，则默认为20。",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 11800,
+        "include": true
+      }
+    },
+    "default_value": 20,
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "transactionon",
+    "supported": true,
+    "type": "boolean",
+    "desc": "1. 是否开启事务功能。默认为true\n2. 当开启事务功能，'logfilenum' 必须大于1。",
+    "default_value": true,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "transactiontimeout",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 事务锁等待超时时间（单位：秒）,默认为:60,取值范围[0,3600]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 3600,
+        "include": true
+      }
+    },
+    "default_value": 60,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "numpreload",
+    "supported": true,
+    "type": "num",
+    "desc": "页面预加载代理数据，默认值为0，取值范围：[0,100]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 100,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "maxprefpool",
+    "supported": true,
+    "type": "num",
+    "desc": "数据预取代理池最大数量,默认值:0,取值范围:[0,1000]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 1000,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "maxsubquery",
+    "supported": true,
+    "type": "num",
+    "desc": "查询任务的最大分解子查询数量,默认值:10,最小值为0,最大值不能超过参数maxprefpool的值",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      }
+    },
+    "default_value": 10,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "maxreplsync",
+    "supported": true,
+    "type": "num",
+    "desc": "日志同步最大并发数量，默认值:10,取值范围:[0,200], 0表示不启用日志并发同步",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 200,
+        "include": true
+      }
+    },
+    "default_value": 10,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "logbuffsize",
+    "supported": true,
+    "type": "num",
+    "desc": "复制日志内存页面数,默认值:1024,取值范围:[512,1024000],但日志总内存大小不能超过日志总文件大小;每个页面大小为64KB",
+    "num_validator": {
+      "left": {
+        "value": 512,
+        "include": true
+      },
+      "right": {
+        "value": 1024000,
+        "include": true
+      }
+    },
+    "default_value": 1024,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "tmppath",
+    "supported": true,
+    "type": "str",
+    "desc": "数据库临时文件目录，默认为'数据库路径'+'/tmp'",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "sortbuf",
+    "supported": true,
+    "type": "num",
+    "desc": "排序缓存大小(MB),默认值256,最小值128,取值范围[128, 2^31 - 1]",
+    "num_validator": {
+      "left": {
+        "value": 128,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 256,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "hjbuf",
+    "supported": true,
+    "type": "num",
+    "desc": "哈希连接缓存大小(MB),默认值128,最小值64,取值范围[64, 2^31 - 1]",
+    "num_validator": {
+      "left": {
+        "value": 64,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 128,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "syncstrategy",
+    "supported": true,
+    "type": "enum",
+    "desc": "1. 副本组之间数据同步控制策略。\n2. 取值列表：\n● none: 不开启同步控制策略。若主节点处理数据的能力远超备节点同步数据的能力，则在写操作繁忙的场景下易导致备节点发生全量同步。\n● keepnormal: 主动降低主节点相对于正常节点的处理速度（可能会造成性能影响），以避免全量同步的发生。\n● keepall: 主动降低主节点相对于所有节点的处理速度（可能会造成性能影响），以避免全量同步的发生。\n3. keepnormal和keepall的区别在于，当有节点异常时keepall会降低主节点的处理速度，而keepnormal不受异常节点的影响。\n4. 如果不指定，默认为keepnormal。",
+    "enum_value": [
+      "none",
+      "keepnormal",
+      "keepall"
+    ],
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "replbucketsize",
+    "supported": true,
+    "type": "num",
+    "desc": "日志并发同步桶大小,必须为2的幂,默认值为32,取值范围:[1,4096]",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 4096,
+        "include": true
+      }
+    },
+    "default_value": 32,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "memdebug",
+    "supported": true,
+    "type": "boolean",
+    "desc": "打开内存调试,默认为false",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "memdebugverify",
+    "supported": true,
+    "type": "boolean",
+    "desc": "打开内存调试校验,默认为false",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "memdebugmask",
+    "supported": true,
+    "type": "str",
+    "desc": "内存调试掩码，取值 OSS,POOL,TC 或 ALL, 可以使用'|'连接多个值，ALL表示开启所有，默认:OSS|POOL",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "memdebugdetail",
+    "supported": true,
+    "type": "boolean",
+    "desc": "打开内存详细项的调试校验，默认为false",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "memdebugsize",
+    "supported": true,
+    "type": "num",
+    "desc": "内存调试段大小,默认为0,当为不0时,取值范围:[8,4194304]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 4194304,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "cataloglist",
+    "supported": true,
+    "type": "str",
+    "desc": "编目节点列表(json)",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "dpslocal",
+    "supported": true,
+    "type": "boolean",
+    "desc": "是否记录来自本地端口的操作,默认为false",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "traceon",
+    "supported": true,
+    "type": "boolean",
+    "desc": "是否启动时开启跟踪,默认为false",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "tracebufsz",
+    "supported": true,
+    "type": "num",
+    "desc": "启动时开启跟踪的缓冲区大小(MB),默认值:256,取值范围:[1,1024]",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 1024,
+        "include": true
+      }
+    },
+    "default_value": 256,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "sharingbreak",
+    "supported": true,
+    "type": "num",
+    "desc": "判定心跳中断的时间(ms),默认值:7000,取值范围:[5000,300000]",
+    "num_validator": {
+      "left": {
+        "value": 5000,
+        "include": true
+      },
+      "right": {
+        "value": 300000,
+        "include": true
+      }
+    },
+    "default_value": 7000,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "indexscanstep",
+    "supported": true,
+    "type": "num",
+    "desc": "索引扫描步长,默认值为100,取值范围:[1,10000]",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 10000,
+        "include": true
+      }
+    },
+    "default_value": 100,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "startshifttime",
+    "supported": true,
+    "type": "num",
+    "desc": "节点起动漂移时间(sec),默认值:600,取值范围:[0,7200]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 7200,
+        "include": true
+      }
+    },
+    "default_value": 600,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "preferredinstance",
+    "supported": false
+  },
+  {
+    "name": "preferedinstance",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定执行读请求时优先选择的实例\n2. 如果不指定，则默认值为M，即选择可读写实例。\n3. 取值可以取单值单独指定，也可以取多值混合指定；在 SequoiaDB 的配置文件中可以使用 ',' 连接多个值。连接多值时字符串最大长度为 256。如：\"1,2,S\"。\n4. 取值范围：\n● 取值类型分为两类，一类是角色取值，如 \"M\", \"S\" 等；一类是实例取值，即数据节点通过配置 instanceid 设置的实例 ID。\n● 角色取值：\"M\", \"m\"：可读写实例（主实例）；\"S\", \"s\": 只读实例（备实例）；\"A\", \"a\": 任意角色实例。\n● 实例取值：1-255，指定匹配 instanceid 设置的节点。数据节点可以通过配置 instanceid 配合使用。\n5. 更详细的内容请参考 [db.setSessionAttr()]。",
+    "default_value": "M",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "preferredinstancemode",
+    "supported": false
+  },
+  {
+    "name": "preferedinstancemode",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定当多个实例符合 preferedinstance 的条件时的选择模式。\n2. 取值列表：\n● \"random\": 从候选的实例取值中随机选择。\n● \"ordered\": 从候选的实例取值中按照 perferedinstance 的顺序进行选择。\n● preferedinstance 中的角色取值，根据规则选择时优于或者次于实例取值，与 preferedinstancemode 取值无关。\n3. 默认值为 \"random\"。\n4. 更详细的内容请参考 [db.setSessionAttr()]。",
+    "default_value": "random",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "clientcharset",
+    "supported": false
+  },
+  {
+    "name": "resultscharset",
+    "supported": false
+  },
+  {
+    "name": "preferredstrict",
+    "supported": false
+  },
+  {
+    "name": "preferedstrict",
+    "supported": true,
+    "type": "boolean",
+    "desc": "指定节点选择是否为严格模式，当为严格模式时，节点只能从 preferedinstance 指定的ID中选取，默认为false。",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "preferredperiod",
+    "supported": false
+  },
+  {
+    "name": "preferedperiod",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 优先实例的有效周期，单位为秒。\n2. 如果上一次选择进行请求的节点在有效周期内，读请求仍使用该节点进行查询，周期之后，将根据 preferedinstance 重新选择。\n3. 默认值为 60 秒。\n4. 取值范围为 [-1, 2^31 - 1]\n5. -1 表示不失效\n6. 0 表示本次查询不使用上次选择的实例，根据 preferedinstance 进行重新选择。",
+    "num_validator": {
+      "left": {
+        "value": -1,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 60,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "preferredconstraint",
+    "supported": false
+  },
+  {
+    "name": "instanceid",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 节点的实例 ID，用于 preferedinstance 进行实例选择。\n2. 有效的取值包括 [1, 255]。\n3. 如不指定，或者指定超出有效范围，则按照节点在编目信息中的下标进行自动分配。\n4. 多个节点可以指定相同的实例 ID。",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 255,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "lobpath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定大对象存放路径。\n2. 如果不指定，则默认为：数据文件路径",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "lobmetapath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定大对象元数据存放路径。\n2. 如果不指定，则默认与'lobpath'保持一致",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "directioinlob",
+    "supported": true,
+    "type": "boolean",
+    "desc": "在大对象功能中关闭文件系统缓存，如果不指定，默认值为\"false\"",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "sparsefile",
+    "supported": true,
+    "type": "boolean",
+    "desc": "当扩展文件时，使用稀疏文件功能，如果不指定，默认值为\"false\"",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "clustername",
+    "supported": true,
+    "type": "str",
+    "desc": "所属集群名称",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false,
+    "hidden": true
+  },
+  {
+    "name": "businessname",
+    "supported": true,
+    "type": "str",
+    "desc": "所属业务名称",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false,
+    "hidden": true
+  },
+  {
+    "name": "usertag",
+    "supported": true,
+    "type": "str",
+    "desc": "用户自定义标签",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false,
+    "hidden": true
+  },
+  {
+    "name": "weight",
+    "supported": true,
+    "type": "num",
+    "desc": "节点选举权重, 默认值为10, 取值范围[1, 100]",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 100,
+        "include": true
+      }
+    },
+    "default_value": 10,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "usessl",
+    "supported": true,
+    "type": "boolean",
+    "desc": "允许客户端使用SSL连接（仅限企业版），默认为false",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "auth",
+    "supported": true,
+    "type": "boolean",
+    "desc": "开启鉴权功能.默认为true",
+    "default_value": true,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "fap",
+    "supported": true,
+    "type": "enum",
+    "desc": "开启第三方驱动接入.支持'fapmongo2'、'fapmongo3'和'fapmongo4'选项",
+    "enum_value": [
+      "fapmongo2",
+      "fapmongo3",
+      "fapmongo4"
+    ],
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "planbuckets",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 访问计划缓存内桶的个数。\n2. 当其为0时数据库将不会缓存任何访问计划。\n3. 默认为500，最大值为4096。\n4. SequoiaDB 内部自动向上取整为 0, 128, 256, 512, 1024, 2048, 4096。\n5. 每个桶中平均最多可以放置 3 个访问计划缓存。",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 4096,
+        "include": true
+      }
+    },
+    "default_value": 500,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "optimeout",
+    "supported": true,
+    "type": "num",
+    "desc": "判定操作中断的时间(ms),默认值:60000, 0表示不超时，取值范围[0, 2^31 - 1]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 60000,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "overflowratio",
+    "supported": true,
+    "type": "num",
+    "desc": "记录大小预留空间扩展比(%),默认为12,取值范围:[0,10000]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 10000,
+        "include": true
+      }
+    },
+    "default_value": 12,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "extendthreshold",
+    "supported": true,
+    "type": "num",
+    "desc": "预扩展数据段的阈值(单位:MB, 取值必须是2的幂或者0), 默认为32, 0表示不开启预扩展, 取值范围:[0, 128]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 128,
+        "include": true
+      }
+    },
+    "default_value": 32,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "signalinterval",
+    "supported": true,
+    "type": "num",
+    "desc": "信号测试周期(秒),默认值0.小于等于0表示关闭信号测试功能,取值范围[0, 2^31 - 1]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "omaddr",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定om节点的地址。配置形式为\"hostname:omservicename\"。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "maxcachesize",
+    "supported": true,
+    "type": "num",
+    "desc": "节点缓存最大值，单位为MB，默认值为0，取值范围[0, 2^31 - 1]（注意：该配置目前仅对Lob功能生效）",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "maxcachejob",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 后台缓存任务线程的最大数量，默认值为10，取值范围为[2, 200]。\n2. 后台缓存任务线程主要执行同步脏页至文件，回收和释放空闲内存页。\n3. 后台缓存任务线程根据缓存的负载情况自动启动和退出。\n4. 该配置目前仅对Lob功能生效。",
+    "num_validator": {
+      "left": {
+        "value": 2,
+        "include": true
+      },
+      "right": {
+        "value": 200,
+        "include": true
+      }
+    },
+    "default_value": 10,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "cachemergesz",
+    "supported": true,
+    "type": "num",
+    "desc": "每一个集合空间用于合并页的缓存大小，默认为0，取值范围:[0,64],单位为MB（注意：该配置目前仅对Lob功能生效）",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 64,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "pagealloctimeout",
+    "supported": true,
+    "type": "num",
+    "desc": "申请缓存页的超时时间，默认为0，取值范围:[0,3600000],单位为毫秒",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 3600000,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "maxsyncjob",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 后台数据同步任务线程的最大数量，默认值为10，取值范围为[2, 200]。\n2. 后台数据同步任务线程主要执行同步脏数据和日志至文件。\n3. 后台数据同步任务线程根据负载情况自动启动和退出。",
+    "num_validator": {
+      "left": {
+        "value": 2,
+        "include": true
+      },
+      "right": {
+        "value": 200,
+        "include": true
+      }
+    },
+    "default_value": 10,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "syncinterval",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 后台数据同步周期，单位毫秒。\n2. 对于编目节点和om节点，默认值为10000，取值范围(0, 60000]\n3. 对于其它类型的节点，默认值为10000，0表示不按周期触发数据同步，取值范围[0, 2^31 - 1]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 10000,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "syncrecordnum",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 后台数据同步触发记录数。\n2. 对于编目节点和om节点，默认值为10，取值范围(0, 1000]\n3. 对于其它类型的节点，默认值为0，0表示不按记录数触发数据同步，取值范围[0, 2^31 - 1]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "syncdeep",
+    "supported": true,
+    "type": "boolean",
+    "desc": "1. 数据同步是否开启深度刷盘。\n2. 如果不指定，则默认为false。",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "archiveon",
+    "supported": true,
+    "type": "boolean",
+    "desc": "开启复制日志归档功能，默认值为false。",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "archivecompresson",
+    "supported": true,
+    "type": "boolean",
+    "desc": "开启复制日志归档压缩功能，默认值为true。",
+    "default_value": true,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "archivepath",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 此参数用来指定归档日志的路径。\n2. 如果不指定，则默认路径为：数据文件路径/archivelog。",
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": false
+  },
+  {
+    "name": "archivetimeout",
+    "supported": true,
+    "type": "num",
+    "desc": "判定未归档的超时时间(秒)，默认值：600，0表示不超时, 取值范围[0, 2^31 - 1]。",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 600,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "archiveexpired",
+    "supported": true,
+    "type": "num",
+    "desc": "归档日志文件的过期时间(小时)，默认值:240，0表示不过期, 取值范围[0, 11930464]。",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 11930464,
+        "include": true
+      }
+    },
+    "default_value": 240,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "archivequota",
+    "supported": true,
+    "type": "num",
+    "desc": "归档日志目录的磁盘配额(GB)，默认值：10，0表示没有限制，取值范围[0, 2^31 - 1]。",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 10,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "dataerrorop",
+    "supported": true,
+    "type": "enum",
+    "desc": "1. 节点在无法继续正常增量同步而可能触发全量同步时的处理操作，取值为 0/1/2。 缺省为1。\n2. 取值列表：\n● 0: 不作任何处理，保持节点运行。\n● 1: 自动从该数据组的其它节点进行全量同步。\n● 2: 该节点停止运行。",
+    "enum_value": [
+      0,
+      1,
+      2
+    ],
+    "default_value": 1,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "dmschkinterval",
+    "supported": true,
+    "type": "num",
+    "desc": "检查数据文件一致性的间隔(小时),默认值: 0, 0 表示不进行检查，取值范围:[0, 240]",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 240,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": false,
+    "support_online_modify": false,
+    "effective_online": false,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "perfstat",
+    "supported": true,
+    "type": "boolean",
+    "desc": "是否开启性能统计",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "optcostthreshold",
+    "supported": true,
+    "type": "num",
+    "desc": "查询优化器忽略IO影响的最小的页数，数据页数大于阈值时，估算查询计划代价时需要计算IO的代价，默认值：20，0表示一直需要计算IO代价，-1表示从不计算代价，取值范围[-1, 2^31 - 1]",
+    "num_validator": {
+      "left": {
+        "value": -1,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 20,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "plancachemainclthreshold",
+    "supported": false
+  },
+  {
+    "name": "maxconn",
+    "supported": true,
+    "type": "num",
+    "desc": "指定允许连接到引擎的客户端的最大数量，取值范围为[0,30000], 默认值是0，0表示不限制",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 30000,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "enablemixcmp",
+    "supported": true,
+    "type": "boolean",
+    "desc": "指定查询的匹配模式，如果是true，则可以对不同比较优先级的数据进行匹配，否则只匹配与参数有相同比较优先级的数据。默认是 false",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "plancachelevel",
+    "supported": true,
+    "type": "enum",
+    "desc": "1. 指定查询计划的缓存级别，默认是 3。\n2. 取值列表：\n● 0: 不缓存查询计划。\n● 1: 缓存原查询计划。\n● 2: 缓存泛化后的查询计划。\n● 3: 缓存参数化的查询计划。\n● 4: 缓存参数化并带操作符模糊匹配的查询计划。\n",
+    "enum_value": [
+      0,
+      1,
+      2,
+      3,
+      4
+    ],
+    "default_value": 3,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "svcscheduler",
+    "supported": true,
+    "type": "enum",
+    "desc": "1. 指定任务调度器类型，默认是0。\n2. 取值列表：\n● 0: 不开启。\n● 1: 先入先出。\n● 2: 基于优先级调度。\n● 3: 基于容器调度。\n",
+    "enum_value": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "svcmaxconcurrency",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 指定任务执行的最大并发数，0表示不限制。默认值为100，取值范围[0, 2^31 - 1]。\n2. 当'svcscheduler'取值为0时，该参数不生效。\n",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 2147483647,
+        "include": true
+      }
+    },
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "transisolation",
+    "supported": true,
+    "type": "enum",
+    "desc": "1. 指定事务隔离级别，默认是0。\n2. 取值列表：\n● 0: RU，读未提交。\n● 1: RC, 读已提交。\n● 2: RS，读稳定性。\n● 3: RR，可重复读。",
+    "enum_value": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "default_value": 0,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "translockwait",
+    "supported": true,
+    "type": "boolean",
+    "desc": "1. 指定事务在RC隔离级别下记录锁的等待行为，默认是false。需要与transisolation配合使用\n2. 当mvccon被设为true时，translockwait 会被默认为false。\n3. 取值列表：\n● false: 不等待记录锁，直接从系统读取最后一次提交的版本。\n● true: 等待记录锁，读取最新提交版本的数据\n",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "transautocommit",
+    "supported": true,
+    "type": "boolean",
+    "desc": "是否开启自动事务提交，默认是false。只有当 transaction 开启时取值才会生效。",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "transautorollback",
+    "supported": true,
+    "type": "boolean",
+    "desc": "1.事务操作失败是否自动回滚该事务。默认为true。只有当 transaction 开启时取值才会生效。",
+    "default_value": true,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "transuserbs",
+    "supported": true,
+    "type": "boolean",
+    "desc": "1. 事务操作是否使用回滚段。默认为true。只有当 transaction 开启时取值才会有效。\n2. 当mvccon被设为true时，transuserbs 会被默认为true。",
+    "default_value": true,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "transreplsize",
+    "supported": true,
+    "type": "num",
+    "desc": "事务提交的写副本数，取值[-1,0,1~7]，默认为2。",
+    "num_validator": {
+      "left": {
+        "value": -1,
+        "include": true
+      },
+      "right": {
+        "value": 7,
+        "include": true
+      }
+    },
+    "default_value": 2,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "transrccount",
+    "supported": true,
+    "type": "boolean",
+    "desc": "是否使用读已提交来处理 count() 查询。默认为 true。只有当 transaction 开启时，且隔离级别为读已提交 RC 或者读稳定性 RS，取值才会有效。",
+    "default_value": true,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "logwritemod",
+    "supported": true,
+    "type": "enum",
+    "desc": "复制日志写模式，取值：increment,full,默认为increment。为increment时，复制日志只保存更新记录的增量信息；为full时，复制日志将保存更新记录的完整信息。",
+    "enum_value": [
+      "increment",
+      "full"
+    ],
+    "default_value": "increment",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "logtimeon",
+    "supported": true,
+    "type": "boolean",
+    "desc": "开启复制日志保存时间信息功能，默认为false。",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "enablesleep",
+    "supported": true,
+    "type": "boolean",
+    "desc": "指定发送特定睡眠信号给数据库引擎时，引擎的反应。当睡眠开关开启，引擎会进入冻结状态，所有的线程停滞供调试用。\n当开关关闭，不会发生任何行为。初始值为false，因为这个开关只是为了调试使用的，不应该暴露在实际客户生产环境中。\n",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "recyclerecord",
+    "supported": true,
+    "type": "boolean",
+    "desc": "指定是否异步回收待删除的记录。",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "maxsocketpernode",
+    "supported": true,
+    "type": "num",
+    "desc": "两个节点之间的最大连接数，取值范围：[1,100]，默认为5。",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 100,
+        "include": true
+      }
+    },
+    "default_value": 5,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "maxsocketperthread",
+    "supported": true,
+    "type": "num",
+    "desc": "一个线程驱动最大连接数，0表示不限制，默认为1。",
+    "default_value": 1,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "maxsocketthread",
+    "supported": true,
+    "type": "num",
+    "desc": "通信最大驱动线程数，取值范围[1,100]，默认10。",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 100,
+        "include": true
+      }
+    },
+    "default_value": 10,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "tcmaxsize",
+    "supported": true,
+    "type": "num",
+    "desc": "线程分配器的最大缓存大小，单位：KB。取值范围：[0,65536]，默认为2048。",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 65536,
+        "include": true
+      }
+    },
+    "default_value": 2048,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "mempoolsize",
+    "supported": true,
+    "type": "num",
+    "desc": "全局内存池大小，单位：MB。默认为8192。",
+    "default_value": 8192,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "mempoolthreshold",
+    "supported": false
+  },
+  {
+    "name": "memmxfast",
+    "supported": false
+  },
+  {
+    "name": "memtrimthreshold",
+    "supported": false
+  },
+  {
+    "name": "memmmapthreshold",
+    "supported": false
+  },
+  {
+    "name": "memmmapmax",
+    "supported": false
+  },
+  {
+    "name": "memtoppad",
+    "supported": false
+  },
+  {
+    "name": "monhistevent",
+    "supported": true,
+    "type": "num",
+    "desc": "指定要为监控组件保留的历史事件数量。默认为1000。",
+    "default_value": 1000,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "monslowquerythreshold",
+    "supported": true,
+    "type": "num",
+    "desc": "单位：ms。默认为200。",
+    "default_value": 200,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "monslowcommandthreshold",
+    "supported": false
+  },
+  {
+    "name": "monslowlockthreshold",
+    "supported": false
+  },
+  {
+    "name": "monslowlatchthreshold",
+    "supported": false
+  },
+  {
+    "name": "monoptilevel",
+    "supported": false
+  },
+  {
+    "name": "mongroupmask",
+    "supported": true,
+    "type": "str",
+    "desc": "用于设置监控组的详细监控级别。有效的组值为“slowQuery”或者”all”。有效的监控级别可以为“off”，“basic”或者“detail”。",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "monhistexpiredtime",
+    "supported": false
+  },
+  {
+    "name": "ftmask",
+    "supported": true,
+    "type": "str",
+    "desc": "1. 指定开启容错处理的掩码。SequoiaDB中容错掩码有：NOSPC,DEADSYNC,SLOWNODE\n2. 如果不指定，则默认为\"NOSPC|DEADSYNC\", ALL取值表示开启所有,NONE关闭全部。",
+    "default_value": "NOSPC|DEADSYNC",
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "ftconfirmperiod",
+    "supported": true,
+    "type": "num",
+    "desc": "故障确认的时间周期，默认为60，取值范围:[1,3600],单位为秒",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 3600,
+        "include": true
+      }
+    },
+    "default_value": 60,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "ftconfirmratio",
+    "supported": true,
+    "type": "num",
+    "desc": "故障确认的故障比阈值，默认为80，取值范围:[1,100],单位为百分比",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 100,
+        "include": true
+      }
+    },
+    "default_value": 80,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "ftlevel",
+    "supported": true,
+    "type": "enum",
+    "desc": "容错级别，1(熔断), 2(半容错), 3(全容错). 默认为2",
+    "enum_value": [
+      1,
+      2,
+      3
+    ],
+    "default_value": 2,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "ftfusingtimeout",
+    "supported": true,
+    "type": "num",
+    "desc": "熔断超时时间，默认为10，取值范围：[0,3600]，单位：秒",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 3600,
+        "include": true
+      }
+    },
+    "default_value": 10,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "ftslownodethreshold",
+    "supported": true,
+    "type": "num",
+    "desc": "慢节点检测的日志差阈值，默认：256，取值范围：[1,10000]，单位：MB",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 10000,
+        "include": true
+      }
+    },
+    "default_value": 256,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "ftslownodeincrement",
+    "supported": true,
+    "type": "num",
+    "desc": "慢节点检测的日志增量值，默认：8，取值范围：[0,10000]，单位：MB",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 10000,
+        "include": true
+      }
+    },
+    "default_value": 8,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "syncwaittimeout",
+    "supported": true,
+    "type": "num",
+    "desc": "数据一致性同步等待超时时间，默认为600，取值范围：[1,3600]，单位：秒",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 3600,
+        "include": true
+      }
+    },
+    "default_value": 600,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "shutdownwaittimeout",
+    "supported": true,
+    "type": "num",
+    "desc": "主数据节点停机时等待备节点数据同步超时时间，默认为1200，取值范围：[0,864000]，单位：秒",
+    "num_validator": {
+      "left": {
+        "value": 0,
+        "include": true
+      },
+      "right": {
+        "value": 864000,
+        "include": true
+      }
+    },
+    "default_value": 1200,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": true,
+    "support_batch_modify": true
+  },
+  {
+    "name": "servicemask",
+    "supported": false
+  },
+  {
+    "name": "mvccon",
+    "supported": true,
+    "type": "boolean",
+    "desc": "1. 指定是否打开多版本。\n2. 如果不指定，则默认为false。\n3. 只有当 transactionon 开启时，取值才会有效。\n4. 当mvccon被设为true时，transuserbs 会被默认为true。\n5. 当mvccon被设为true时，translockwait 会被默认为false。",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "globtranson",
+    "supported": true,
+    "type": "boolean",
+    "desc": "1. 指定是否支持全局事务功能。\n2. 如果不指定，则默认值为 false。\n3. 只有当 transactionon 开启时，取值才会有效。\n4. 全局事务功能要求接入全局时间服务支持，并且数据节点打开 MVCC 支持。",
+    "default_value": false,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true
+  },
+  {
+    "name": "globtransmaxtimeerror",
+    "supported": true,
+    "type": "num",
+    "desc": "1. 全局事务节点间可以接受的由于网络传输造成的最大时间误差（单位为微秒）。\n2. 默认是 500000。\n3. 最大值是 5000000。\n4. 最小值为 -1，表示全局事务节点间不进行全局时间校对。",
+    "num_validator": {
+      "left": {
+        "value": -1,
+        "include": true
+      },
+      "right": {
+        "value": 5000000,
+        "include": true
+      }
+    },
+    "default_value": 500000,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "mvccrbsnum",
+    "supported": true,
+    "type": "num",
+    "desc": "多版本回滚段集合空间的个数，默认值为：16，取值范围：[ 1, 128 ]",
+    "num_validator": {
+      "left": {
+        "value": 1,
+        "include": true
+      },
+      "right": {
+        "value": 128,
+        "include": true
+      }
+    },
+    "default_value": 16,
+    "modifiedable": true,
+    "support_online_modify": true,
+    "effective_online": false,
+    "support_batch_modify": true,
+    "hidden": true
+  },
+  {
+    "name": "indexcoveron",
+    "supported": false
+  },
+  {
+    "name": "maxcontextnum",
+    "supported": false
+  },
+  {
+    "name": "maxsessioncontextnum",
+    "supported": false
+  },
+  {
+    "name": "contexttimeout",
+    "supported": false
+  },
+  {
+    "name": "transallowlockescalation",
+    "supported": false
+  },
+  {
+    "name": "transmaxlocknum",
+    "supported": false
+  },
+  {
+    "name": "transmaxlogspaceratio",
+    "supported": false
+  },
+  {
+    "name": "transconsistencystrategy",
+    "supported": false
+  },
+  {
+    "name": "detectdisk",
+    "supported": false
+  },
+  {
+    "name": "diagsecureon",
+    "supported": false
+  },
+  {
+    "name": "metacacheexpired",
+    "supported": false
+  },
+  {
+    "name": "metacachelwm",
+    "supported": false
+  },
+  {
+    "name": "statmcvlimit",
+    "supported": false
+  },
+  {
+    "name": "enableasyncread",
+    "supported": false
+  },
+  {
+    "name": "remotelocationconsistency",
+    "supported": false
+  },
+  {
+    "name": "consultrollbacklogon",
+    "supported": false
+  },
+  {
+    "name": "privilegecheck",
+    "supported": false
+  },
+  {
+    "name": "usercacheinterval",
+    "supported": false
+  },
+  {
+    "name": "fscacheexpired",
+    "supported": false
+  }
+]

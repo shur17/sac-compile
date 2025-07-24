@@ -1,0 +1,3 @@
+-Xms1G
+-Xmx1G
+-XX:NewRatio=1

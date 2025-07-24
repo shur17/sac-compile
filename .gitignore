@@ -1,0 +1,11 @@
+*.pyc
+*.iml
+.idea/
+.project
+.classpath
+.settings/
+target/
+/localbuild/logs/
+/localbuild/workdir/
+sac-auto-testcase
+shared-lib/

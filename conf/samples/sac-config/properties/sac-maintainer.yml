@@ -1,0 +1,9 @@
+spring:
+  # 公共配置文件
+  profiles:
+    include: common
+
+shake:
+  connect:
+    connectTimeoutMs: 5000
+    socketTimeoutMs: 30000

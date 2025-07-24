@@ -1,0 +1,43 @@
+server:
+  port: {{ server-port }}
+spring:
+  application:
+    name: sac-deployment
+  cloud:
+    config:
+      discovery:
+        enabled: true
+        service-id: sac-config
+    loadbalancer:
+      health-check:
+        refetch-instances: true
+        # 服务列表刷新间隔，10s
+        refetch-instances-interval: 10000
+        repeat-health-check: false
+  servlet:
+    multipart:
+      max-file-size: 2GB
+      max-request-size: 2GB
+# Eureka客户端配置
+eureka:
+  client:
+    fetchRegistry: true
+    registerWithEureka: true
+    # 拉服务列表时间间隔，10s
+    registryFetchIntervalSeconds: 10
+    serviceUrl:
+      defaultZone: {{ eureka-client-service-url-default-zone }}
+  instance:
+    # 服务过期时间，15s
+    lease-expiration-duration-in-seconds: 15
+    # 服务刷新间隔，10s
+    lease-renewal-interval-in-seconds: 10
+    # 是否启用 https
+    securePortEnabled: ${server.ssl.enabled}
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 1200000

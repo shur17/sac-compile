@@ -1,0 +1,38 @@
+server:
+  # SSL Config
+  ssl:
+    key-store-type: PKCS12
+    key-store: ${sac.dir}/conf/sequoiadb.p12
+    key-store-password: sequoiadb
+    key-alias: sequoiadb
+    enabled: false
+dds:
+  addresses:
+    - {{ dds-addresses }}
+  username: {{ dds-username }}
+  password: {{ dds-password }}
+  database: {{ dds-database }}
+  authDatabase: {{ dds-auth-database }}
+login:
+  # 是否允许多地登录
+  allowConcurrentLogin: {{ login-allow-concurrent-login }}
+broadcast:
+  resp:
+    # 广播时，等待客户端响应的最长时间，单位：s
+    maxWaitTime: 15
+cmd:
+  # 系统指令执行超时时间，单位：s
+  systemCmdRequestTimeout: 60
+  # 业务指令执行超时时间，单位：s
+  businessCmdRequestTimeout: 60
+  # 部署指令执行超时时间，单位：s
+  deployCmdRequestTimeout: 60
+  # 集群管理指令执行超时时间，单位：s
+  clusterMaintainCmdRequestTimeout: 60
+  # 指令连接超时时间（超时自动关闭 channel），单位：s
+  commandConnectionTimeout: 90
+  # 指令连接 worker 线程数，0 表示使用 Netty 默认配置
+  commandConnectionWorkerThreads: 2
+  sendFile:
+    # 文件发送分片大小
+    partSize: 3MB

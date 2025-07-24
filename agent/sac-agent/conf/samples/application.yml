@@ -1,0 +1,14 @@
+tcp:
+  port: 28081
+
+settings:
+  maxQueueCacheMBSize: 100
+  globalCacheExpireTimeMS: 1800000
+  nodeCacheExpireTimeMS: 3600000
+  collectorContextExpireTimeMS: 300000
+  receiveFileContextExpiredTimeMs: 300000
+  dupErrorLogInhibitTimeMS: 30000
+  serverSelectionTimeoutMS: 1000
+  connectionTimeoutMS: 10000
+  socketTimeoutMS: 300000
+  sshExecCmdTimeoutSeconds: 300

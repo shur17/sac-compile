@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration debug="false">
+    <!--定义日志文件的存储地址 勿在 LogBack 的配置中使用相对路径-->
+    <property name="LOG_HOME" value="${sac.log.path}" />
+    <!-- 控制台输出 -->
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{50}:%L - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <!-- 按照每天生成日志文件 -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/sac-deployment/deployment.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- rollover daily -->
+            <fileNamePattern>${LOG_HOME}/sac-deployment/deployment-%d{yyyy-MM-dd}-%i.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <maxFileSize>100MB</maxFileSize>
+            <totalSizeCap>1000MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <!--格式化输出：%d表示日期，%thread表示线程名，%-5level：级别从左显示5个字符宽度%msg：日志消息，%n是换行符-->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{50}:%L - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- set audit log to audit.log file -->
+    <appender name="auditTOFILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>${LOG_HOME}/sac-deployment/audit.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.FixedWindowRollingPolicy">
+            <fileNamePattern>${LOG_HOME}/sac-deployment/audit.%i.log</fileNamePattern>
+            <minIndex>1</minIndex>
+            <maxIndex>10</maxIndex>
+        </rollingPolicy>
+
+        <triggeringPolicy class="ch.qos.logback.core.rolling.SizeBasedTriggeringPolicy">
+            <maxFileSize>100MB</maxFileSize>
+        </triggeringPolicy>
+
+        <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{50}:%L - %msg%n</pattern>
+        </encoder>
+    </appender>
+    <logger name="audit" additivity="false">
+        <appender-ref ref="auditTOFILE"/>
+    </logger>
+
+    <!-- 日志输出级别 -->
+    <root level="INFO">
+        <appender-ref ref="FILE" />
+    </root>
+
+    <logger name="com.sequoiadb" level="INFO"/>
+    <logger name="org.mongodb.driver.connection" level="WARN" />
+
+</configuration>

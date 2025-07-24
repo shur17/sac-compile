@@ -1,0 +1,2 @@
+1. 解压 PyYAML-5.2.tar.gz
+2. 进入解压目录，执行 python setup.py install
