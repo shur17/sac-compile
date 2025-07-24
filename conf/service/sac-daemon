@@ -1,0 +1,93 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Description:       SAC Daemon
+### END INIT INFO
+
+# Do NOT "set -e"
+
+DESC="SAC Daemon"
+NAME=sac_daemon
+DAEMON=SYS_INSTALL_DIR/tools/daemon/$NAME
+SCRIPTNAME=/etc/init.d/sac-daemon
+
+do_start() {
+   PROCESS=`ps -ef|grep $DAEMON|grep -v grep|grep -v PPID|awk '{ print $2}'`
+   if [ "$PROCESS" = "" ]; then
+      su - SYS_USER -c "nohup $DAEMON > /dev/null 2>&1 &"
+   else
+      for pid in $PROCESS
+      do
+         echo "sac-daemon (PID: $pid) is already running."
+      done
+   fi
+}
+
+do_stop() {
+   PROCESS=`ps -ef|grep $DAEMON|grep -v grep|grep -v PPID|awk '{ print $2}'`
+   kill_success=0
+
+   if [ "$PROCESS" = "" ]; then
+     echo "sac-daemon is not running."
+   else
+      for pid in $PROCESS
+      do
+         echo "Kill the process [ $pid ]."
+         kill $pid
+         if [ $? -ne 0 ]; then
+            echo "Failed to kill process [ $pid ]."
+            kill_success=1
+         fi
+      done
+   fi
+
+   return $kill_success
+}
+
+get_status() {
+   PROCESS=`ps -ef|grep $DAEMON|grep -v grep|grep -v PPID|awk '{ print $2}'`
+   if [ "$PROCESS" = "" ]; then
+      echo "sac-daemon is not running."
+   else
+      for pid in $PROCESS
+      do
+         echo "sac-daemon (PID: $pid) is running."
+      done
+   fi
+}
+
+case "$1" in
+   start)
+      echo "Starting $DESC: $NAME."
+      do_start
+      ;;
+   stop)
+      echo -n "Stopping $DESC: "
+      do_stop
+      ;;
+   status)
+      echo -n "Status $DESC: "
+      get_status
+      ;;
+
+   restart)
+      echo "Restarting $DESC: $NAME"
+      echo -n "Stopping $DESC: "
+      do_stop
+      result=$?
+      if [ $result -ne 0 ]; then
+         echo "Failed to stop daemon."
+         exit 1
+      fi
+
+      echo "Starting $DESC: $NAME."
+      do_start
+      ;;
+   *)
+      echo "Usage: $SCRIPTNAME {start|stop|restart|status}" >&2
+      exit 3
+      ;;
+esac

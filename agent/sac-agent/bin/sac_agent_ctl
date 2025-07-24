@@ -1,0 +1,570 @@
+#!/bin/bash
+
+#   exit code list:
+#   0     successful termination
+#   3     service is running
+#   4     service is not running
+#   8     port is already in use
+#   9     executive jar file was not found
+#   10    config file was not found
+#   11    tcp.port was not config
+# check service start timeout, default value is 90 seconds
+SAC_AGENT_CTL_CHECK_START_TIMEOUT=90
+
+# check service stop timeout, default value is 120 seconds
+SAC_AGENT_CTL_CHECK_STOP_TIMEOUT=120
+
+# check service pull up timeout, default value is 30 seconds
+SAC_AGENT_CTL_CHECK_PULL_UP_TIMEOUT=30
+
+SERVER_NAME="sac-agent-collector"
+
+function check_user()
+{
+  local mode=$1
+  SAC_USER=`ls -l $AGENT_CTL_BIN_PATH/sac_agent_ctl | awk '{print $3}'`
+
+  local cur_user=`whoami`
+  if [ "$cur_user" != "$SAC_USER" -a "$cur_user" != "root" ]
+  then
+    echo "ERROR: './sac_agent_ctl $mode' requires [$SAC_USER] permission" >&2
+    exit 77
+  fi
+}
+
+# if root: change to sac user to execute command
+# if sac user: execute command
+function exec_cmd()
+{
+   local cmd="$1"
+   local cur_user=`whoami`
+
+   if [ $cur_user == "root" ]
+   then
+      su - $SAC_USER -c "${cmd}" >> /dev/null 2>&1
+      return $?
+   else
+      eval "${cmd}" >> /dev/null 2>&1
+      return $?
+   fi
+}
+
+# print log
+function print_log()
+{
+  test -d $AGENT_CTL_INSTALL_PATH/log || exec_cmd "mkdir $AGENT_CTL_INSTALL_PATH/log"
+  local log_level=$1
+  local log=$2
+  local date=`date "+%Y-%m-%d %H:%M:%S"`
+  local log_info="$date $log_level: $log"
+  echo "$log_level: $log"
+  exec_cmd "echo \"$log_info\" >> $AGENT_CTL_INSTALL_PATH/log/sac_agent_ctl.log"
+}
+
+function help()
+{
+  echo "agent_ctl is a utility to start, stop, or control Agent."
+  echo ""
+  echo "Usage:"
+  echo "  agent_ctl status"
+  echo "  agent_ctl start"
+  echo "  agent_ctl stop [--disable-warning]"
+  echo "  agent_ctl restart"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help             output help message, then exit"
+  echo "  -v, --version          output version information, then exit"
+  echo "  --disable-warning      disable warning message when stop agent"
+  # echo "  --force                 use Send semaphore 9 to force the process to shut down"
+}
+
+function show_version()
+{
+  if [[ ! -f $AGENT_CTL_INSTALL_PATH/VERSION ]]; then
+    echo "ERROR: VERSION file was not found in $AGENT_CTL_INSTALL_PATH"
+    exit 1
+  else
+    echo "$(cat $AGENT_CTL_INSTALL_PATH/VERSION)"
+  fi
+}
+
+function get_version()
+{
+  if [[ ! -f $AGENT_CTL_INSTALL_PATH/VERSION ]]; then
+    echo "ERROR: VERSION file was not found in $AGENT_CTL_INSTALL_PATH"
+    exit 1
+  else
+    version=`cat $AGENT_CTL_INSTALL_PATH/VERSION | grep "Agent version" | awk '{print $3}'`
+    echo "$version"
+  fi
+}
+
+# get the pid of one service
+function get_one_pid()
+{
+  local service_name=$1
+  GLOBAL_TEMP_PID=`ps -ef | grep "$AGENT_CTL_INSTALL_PATH/lib/$service_name" | grep "service_name=$service_name" | grep -v grep | awk '{print $2}'`
+}
+
+# get the port of agent
+function get_agent_port()
+{
+  if [[ ! -f $AGENT_CTL_INSTALL_PATH/conf/application.yml ]]; then
+    get_one_pid $service_name
+    SAC_AGENT_CTL_TEMP_PORT=`netstat -nltp | grep $GLOBAL_TEMP_PID | awk '{print $4}' | cut -b 4-`
+  else
+    SAC_AGENT_CTL_TEMP_PORT=`cat $AGENT_CTL_INSTALL_PATH/conf/application.yml | grep "^\s*port" | awk -F'[ =]' '{print $NF }'`
+  fi
+}
+
+# check whether the port is in use
+# arg1: port number
+function check_port_available()
+{
+  local service_port=$1
+
+  # ignore TIME_WAIT port which is useful
+  netstat -npa | awk '{print $4,$6}' | grep -vw TIME_WAIT | grep -vw FIN_WAIT2 | grep -vw FIN_WAIT1 | grep -vw CLOSE_WAIT | awk -F : '{print $NF}' | grep -w $service_port >> /dev/null 2>&1
+  local rc=$?
+  if [ $rc == 0 ]; then
+    return 8
+  fi
+
+  return 0
+}
+
+# get status of one service
+function get_one_status()
+{
+  local service_name=$1
+
+  get_one_pid $service_name
+  local tcp_port=`cat $AGENT_CTL_INSTALL_PATH/conf/application.yml | grep "^\s*port" | awk -F'[ =]' '{print $NF }'`
+  if [[ -n "$GLOBAL_TEMP_PID" ]]; then
+    local start_time=`ps -eo lstart,pid | grep -w "$GLOBAL_TEMP_PID" | awk '{print $1,$2,$3,$4,$5}'`
+    if [ "$start_time" != "" ]; then
+      start_time=`date "+%Y-%m-%d-%H:%M:%S" -d "$start_time"`
+    else
+      start_time="-"
+    fi
+    printf "%-25s %-10s %-25s %-10s\n" $SERVER_NAME $GLOBAL_TEMP_PID $start_time $tcp_port
+    return 3
+  else
+    printf "%-25s %-10s %-25s %-10s\n" $SERVER_NAME "-" "-" "-"
+    return 4
+  fi
+
+  return 0
+
+}
+
+# get status of added services
+function get_status()
+{
+  local service=$AGENT_SERVICE_NAME
+  local port
+
+  printf "%-25s %-10s %-25s %-10s\n" "SERVICE" "PID" "START_TIME" "PORT"
+
+  local total_cnt=0
+  local run_ctl=0
+
+  get_one_status $service
+  local ret=$?
+  test $ret -eq 3 && run_ctl=$(($run_ctl+1))
+  total_cnt=$(($total_cnt+1))
+
+  printf "Total: %s; Run: %s\n" $total_cnt $run_ctl
+}
+
+function backup_system_out_file()
+{
+  local service_system_out_file=$1
+  if [[ ! -f $service_system_out_file ]]; then
+    return 0
+  fi
+
+  local size=$(wc -c < $service_system_out_file)
+  if [[ $size -lt 104857600 ]]; then
+    return 0
+  fi
+
+  local backup_file="$AGENT_CTL_INSTALL_PATH/log/system.1.out"
+  exec_cmd "mv $service_system_out_file $backup_file"
+}
+
+function inner_start()
+{
+  get_one_status $AGENT_SERVICE_NAME >> /dev/null 2>&1
+  if [[ $? == 3 ]]; then
+    print_log "ERROR" "service $SERVER_NAME is already running"
+    return 3
+  fi
+
+  if [[ ! -d $AGENT_CTL_INSTALL_PATH/lib || ! -f $AGENT_CTL_INSTALL_PATH/lib/$JAR_NAME ]]; then
+    print_log "ERROR" "executive jar file $JAR_NAME was not found in $AGENT_CTL_INSTALL_PATH/lib"
+    return 9
+  fi
+
+  if [[  ! -f $AGENT_CTL_INSTALL_PATH/conf/application.yml ]]; then
+    print_log "ERROR" "config file application.yml was not found in $AGENT_CTL_INSTALL_PATH/conf/application.yml"
+    return 10
+  fi
+
+  get_agent_port >> /dev/null 2>&1
+  if [[ -z "$SAC_AGENT_CTL_TEMP_PORT" ]]; then
+    print_log "ERROR" "tcp.port was not config in $AGENT_CTL_INSTALL_PATH/conf/application.yml"
+    return 11
+  fi
+  print_log "INFO" "Checking whether port $SAC_AGENT_CTL_TEMP_PORT is available ..."
+
+  for ((i=0; i<15; i++));
+  do
+    check_port_available $SAC_AGENT_CTL_TEMP_PORT >> /dev/null 2>&1
+    local ret=$?
+    if [ $ret == 8 ]; then
+      sleep 0.2
+    else
+      break;
+    fi
+  done
+  check_port_available $SAC_AGENT_CTL_TEMP_PORT >> /dev/null 2>&1
+  local ret=$?
+  test $ret -ne 0 && print_log "ERROR" "tcp port $SAC_AGENT_CTL_TEMP_PORT is already in use" >&2 && return $ret
+  print_log "INFO" "Port $SAC_AGENT_CTL_TEMP_PORT is available"
+
+  print_log "INFO" "Starting service $SERVER_NAME ..."
+
+  test -d $AGENT_CTL_INSTALL_PATH/.tmp || exec_cmd "mkdir $AGENT_CTL_INSTALL_PATH/.tmp"
+  local DEFAULT_JVM_OPTS="-Duser.dir=$AGENT_CTL_INSTALL_PATH -Dservice_name=$AGENT_SERVICE_NAME -Dfile.encoding=utf-8 -Dspring.config.additional-location=$AGENT_CTL_INSTALL_PATH/conf/application.yml -Dlogging.config=$AGENT_CTL_INSTALL_PATH/conf/logback.xml"
+
+  # get config jvm options
+  local CONF_JVM_OPTS
+  if [[ ! -f $AGENT_CTL_INSTALL_PATH/conf/agent.vmoptions ]]; then
+    print_log "WARNING" "agent.vmoptions file was not found in $AGENT_CTL_INSTALL_PATH/conf/"
+    CONF_JVM_OPTS="-Xms250M -Xmx400M"
+  else
+    CONF_JVM_OPTS=`cat $AGENT_CTL_INSTALL_PATH/conf/agent.vmoptions`
+    # remove line breaks
+    CONF_JVM_OPTS=`echo $CONF_JVM_OPTS`
+  fi
+  local hprof_file=${AGENT_CTL_INSTALL_PATH}/conf/sac-agent-collector.hprof
+  local on_out_of_memory_file=${AGENT_CTL_INSTALL_PATH}/tools/on-OOM/on_out_of_memory.sh
+  CONF_JVM_OPTS="$CONF_JVM_OPTS -XX:OnOutOfMemoryError='$on_out_of_memory_file' -XX:+HeapDumpOnOutOfMemoryError -XX:HeapDumpPath=$hprof_file"
+
+  local service_system_out_file="$AGENT_CTL_INSTALL_PATH/log/system.out"
+  backup_system_out_file $service_system_out_file
+  local starting_time=$(date +"%Y-%m-%d %H:%M:%S")
+  local starting_timestamp=$(date +%s)
+  exec_cmd "echo \"[$starting_time]: Starting $SERVER_NAME\" >> $service_system_out_file"
+  exec_cmd "nohup $AGENT_JAVA_PATH $DEFAULT_JVM_OPTS $CONF_JVM_OPTS -jar $AGENT_CTL_INSTALL_PATH/lib/$JAR_NAME >> $service_system_out_file 2>&1 &"
+
+  # wait for the process to pull up until the $SAC_AGENT_CTL_CHECK_PULL_UP_TIMEOUT is reached
+  for (( i=1; i<=$SAC_AGENT_CTL_CHECK_PULL_UP_TIMEOUT; i++ ))
+  do
+    get_one_pid $AGENT_SERVICE_NAME
+    if [[ -z $GLOBAL_TEMP_PID ]]; then
+      exec_cmd "sleep 1"
+      continue
+    fi
+  done
+
+  for (( i=1; i<=$SAC_AGENT_CTL_CHECK_START_TIMEOUT; i++ ))
+  do
+    local initialized_info=$(sed -n "/$starting_time/,\$p" $service_system_out_file | grep "Initialized Agent")
+    get_one_pid $AGENT_SERVICE_NAME
+    test -z $GLOBAL_TEMP_PID && break
+    if [[ "$initialized_info" != "" ]]; then
+      print_log "SUCCESS" "$SERVER_NAME is successfully started (PID: $GLOBAL_TEMP_PID)"
+      test -d $AGENT_CTL_INSTALL_PATH/conf || exec_cmd "mkdir -p $AGENT_CTL_INSTALL_PATH/conf"
+      exec_cmd "echo $GLOBAL_TEMP_PID > $AGENT_CTL_INSTALL_PATH/conf/.sac-agent.pid"
+      return 0
+    else
+      sleep 1
+    fi
+  done
+
+  if [[ $i > $SAC_AGENT_CTL_CHECK_START_TIMEOUT ]]; then
+    print_log "ERROR" "start service $SERVER_NAME timeout" >&2
+    return 11
+  fi
+
+  local log_info=$(sed -n "/$starting_time/,\$p" $service_system_out_file)
+  print_log "ERROR" "$log_info" >&2
+
+  # get the last ERROR log from the service log file
+  local service_last_err_log=$(obtain_err_log_from_file $starting_timestamp)
+  if [ -n "$service_last_err_log" ]; then
+    print_log "ERROR" "$service_last_err_log" >&2
+  fi
+
+  print_log "ERROR" "Fail to start service $SERVER_NAME, please verify log in $AGENT_CTL_INSTALL_PATH/log/agent.log or $AGENT_CTL_INSTALL_PATH/log/sac_agent_ctl.log" >&2
+  return 4
+}
+
+# start service
+function start()
+{
+  check_jar_count
+  version=`get_version`
+  JAR_NAME="sac-agent-collector-$version.jar"
+
+  clear_old_packages
+
+  local lock_file="$AGENT_CTL_INSTALL_PATH/.tmp/.lock"
+  if [ ! -f $lock_file ]; then
+    exec_cmd "mkdir -p $AGENT_CTL_INSTALL_PATH/.tmp"
+    exec_cmd "touch $lock_file"
+  fi
+
+  (
+    # blocking wait for lock
+    flock -x 9
+
+    # release lock when exit
+    trap "flock -u 9" Exit
+
+    inner_start
+  ) 9>$lock_file
+}
+
+function clear_old_packages() {
+  local jar_dir="$AGENT_CTL_INSTALL_PATH/lib"
+  local jar_name="$JAR_NAME"
+
+  if [ -d "$jar_dir" ]; then
+    # Find files that do not match the JAR name
+    local files_to_delete=($(find "$jar_dir" -maxdepth 1 -type f ! -name "$jar_name"))
+
+    # Check if there are files to delete
+    if [ ${#files_to_delete[@]} -gt 0 ]; then
+      print_log "INFO" "Found old jar files in $jar_dir that do not match $jar_name. Clearing..."
+
+      for file in "${files_to_delete[@]}"; do
+        print_log "INFO" "Deleting jar file: $file"
+        rm -f "$file"
+      done
+
+      print_log "INFO" "Clearing complete."
+    fi
+  fi
+}
+
+function obtain_err_log_from_file() {
+  local starting_timestamp=$1
+  local agent_log_path="$AGENT_CTL_INSTALL_PATH/log/agent.log"
+  local log_time_pattern="[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}"  # SLF4J log time format, e.g., 2024-11-22 13:55:05.798
+
+  if [ -f "$agent_log_path" ]; then
+    # match the last ERROR level log entry in the SAC Agent service log file
+    # e.g.
+    # 2024-11-22 13:55:05.798 ERROR [ForkJoinPool.commonPool-worker-1] com.sequoiadb.sac.agent.core.netty.TcpServer:83 - Netty TCP Server startup failed
+    local last_err_log=$(grep -E "^$log_time_pattern ERROR" "$agent_log_path" | tail -n 1)
+    if [ -z "$last_err_log" ]; then
+      echo ""
+      return 0
+    fi
+
+    # extract the log time
+    local log_time=$(echo "$last_err_log" | grep -oP "$log_time_pattern")
+    local log_timestamp=$(date -d "$log_time" +%s)
+
+    # compare the log timestamp to check if the log was output after the start_time
+    if [ "$starting_timestamp" -gt "$log_timestamp" ]; then
+      # invalid log: The log was printed before the startup, indicating that the service has not printed any ERROR logs after startup
+      echo ""
+      return 0
+    fi
+
+    # get the next line after the ERROR log (when the log prints and outputs exception stack information, the next line contains the description of the exception).
+    # e.g.
+    # 2024-11-22 13:55:05.798 ERROR [ForkJoinPool.commonPool-worker-1] com.sequoiadb.sac.agent.core.netty.TcpServer:83 - Netty TCP Server startup failed
+    # java.net.BindException: Address already in use
+    local next_log=$(grep -F "$last_err_log" "$agent_log_path" -A 1 | tail -n 1)
+
+    if [ -n "$next_log" ] && [[ ! "$next_log" =~ $log_time_pattern ]]; then
+      # if the next line of the log does not start with a timestamp, it indicates that it is the exception description
+      last_err_log=$(echo -e "$last_err_log\n$next_log")
+    fi
+
+    echo "$last_err_log"
+    return 0
+  fi
+
+  echo ""
+  return 0
+}
+
+
+function inner_stop()
+{
+  get_one_status $AGENT_SERVICE_NAME >> /dev/null 2>&1
+  if [ $? = 4 ]; then
+    print_log "ERROR" "service $SERVER_NAME is not running"
+    return 4
+  fi
+
+  if [[ $DISABLE_STOP_WARNING != true ]];then
+    print_log "WARNING" "stopping sac-agent-collector will stop the data collection."
+  fi
+  get_one_pid $AGENT_SERVICE_NAME
+  print_log "INFO" "Stopping service $SERVER_NAME (PID: $GLOBAL_TEMP_PID) ..."
+  exec_cmd "kill -15 $GLOBAL_TEMP_PID >> /dev/null 2>&1"
+  for (( i=1; i<=$SAC_AGENT_CTL_CHECK_STOP_TIMEOUT; i++ ))
+  do
+    get_one_pid $AGENT_SERVICE_NAME
+    if [[ -n $GLOBAL_TEMP_PID ]]; then
+      sleep 1
+    else
+      print_log "SUCCESS" "service $SERVER_NAME is successfully stopped"
+      test -f $AGENT_CTL_INSTALL_PATH/conf/.sac-agent.pid && exec_cmd "rm -f $AGENT_CTL_INSTALL_PATH/conf/.sac-agent.pid"
+      return 0
+    fi
+  done
+
+  if [[ $i > $SAC_AGENT_CTL_CHECK_STOP_TIMEOUT ]]; then
+    if [[ $FORCE == true ]];then
+      exec_cmd "kill -9 $GLOBAL_TEMP_PID >> /dev/null 2>&1"
+      get_one_pid $service_name
+      if [[ -z $GLOBAL_TEMP_PID ]]; then
+        print_log "SUCCESS" "service $service_name is successfully stopped"
+        test -f $modified_pid_file && exec_cmd "rm -f $modified_pid_file"
+        return 0
+      else
+        print_log "ERROR" "Stop service $service_name timeout" >&2
+        test -f $modified_pid_file && mv $modified_pid_file $original_pid_file
+        return 12
+      fi
+    fi
+    print_log "ERROR" "Stop service $SERVER_NAME timeout" >&2
+    return 12
+  fi
+
+  echo "Fail to stop service $SERVER_NAME, please verify log in $AGENT_CTL_INSTALL_PATH/log" >&2
+  return 3
+}
+
+# stop specified service
+# arg1: service name to stop
+function stop()
+{
+  local lock_file="$AGENT_CTL_INSTALL_PATH/.tmp/.lock"
+  if [ ! -f $lock_file ]; then
+    exec_cmd "mkdir -p $AGENT_CTL_INSTALL_PATH/.tmp"
+    exec_cmd "touch $lock_file"
+  fi
+
+  (
+    # blocking wait for lock
+    flock -x 9
+
+    # release lock when exit
+    trap "flock -u 9" Exit
+
+    inner_stop
+  ) 9>$lock_file
+}
+
+function restart()
+{
+  DISABLE_STOP_WARNING=true
+  stop
+  local ret=$?
+  if [[ $ret -eq 3 ]]; then
+    exit $ret
+  fi
+  start
+  exit $?
+}
+
+function check_jar_count()
+{
+  version=`get_version`
+  jar_file_name="sac-agent-collector-$version.jar"
+  local jar_count=`ls -l $AGENT_CTL_INSTALL_PATH/lib/$jar_file_name | grep -c "^-"`
+  if [[ $jar_count == 0 ]]; then
+    print_log "ERROR" "no jar file found in $AGENT_CTL_INSTALL_PATH/lib" >&2
+    exit 1
+  elif [[ $jar_count != 1 ]]; then
+    print_log "ERROR" "There are more than one jar file in $AGENT_CTL_INSTALL_PATH/lib, please keep the latest one" >&2
+    exit 1
+  fi
+}
+
+test $# -eq 0 && { help && exit -1; }
+
+ARGS=`getopt -o hp:s: --long help,version,force,disable-warning -- "$@"`
+ret=$?
+test $ret -ne 0 && exit $ret
+
+#get path
+dir_name=`dirname $0`
+if [[ ${dir_name:0:1} != "/" ]]; then
+  AGENT_CTL_BIN_PATH=$(pwd)/$dir_name
+else
+  AGENT_CTL_BIN_PATH=$dir_name
+fi
+
+cd $AGENT_CTL_BIN_PATH/../ && AGENT_CTL_INSTALL_PATH=`pwd`
+AGENT_SERVICE_NAME="sac-agent-collector"
+AGENT_JAVA_PATH="$AGENT_CTL_INSTALL_PATH/lib/java/bin/java"
+
+eval set -- "${ARGS}"
+
+
+while true
+do
+  case "$1" in
+    -h | --help )                           help
+                                            exit 0
+                                            ;;
+    -v | --version)                         show_version
+                                            exit 0
+                                            ;;
+    --force)                                FORCE=true
+                                            shift
+                                            ;;
+    --disable-warning)                      DISABLE_STOP_WARNING=true
+                                            shift
+                                            ;;
+    --)                                     shift
+                                            break
+                                            ;;
+    *)                                      echo "ERROR: Internal error!"
+                                            exit 64
+                                            ;;
+  esac
+done
+
+case "$1" in
+  status)        mode=$1; shift 1;;
+
+  start)         mode=$1; shift 1;;
+
+  stop)          mode=$1; shift 1;;
+
+  restart)       mode=$1; shift 1;;
+
+  *)             echo "ERROR: agent_ctl: unrecognized operation mode \"$1\"" >&2
+                 echo "Try 'agent_ctl --help' for more information."
+                 exit 64
+                 ;;
+esac
+
+if [ "$*" != "" ]; then
+  echo "ERROR: agent_ctl: too many arguments: $*" >&2
+  echo "Try 'agent_ctl --help' for more information."
+  exit 64
+fi
+
+# check user
+check_user $mode
+
+case $mode in
+  status)           get_status ;;
+  start)            start || exit $? ;;
+  stop)             stop || exit $? ;;
+  restart)          restart ;;
+esac
+
+exit 0

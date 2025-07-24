@@ -1,0 +1,322 @@
+[
+    {
+        "name": "replication:oplogSizeMB",
+        "supported": true,
+        "type": "num",
+        "role": [
+            "config",
+            "data"
+        ],
+        "desc": "The maximum size in megabytes for the oplog. The oplogSizeMB setting configures the uncompressed size of the oplog, not the size on disk.",
+        "num_validator": {
+            "left": {
+                "value": 990,
+                "include": true
+            },
+            "right": {
+                "value": 1048576,
+                "include": true
+            }
+        },
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "operationProfiling:mode",
+        "supported": true,
+        "type": "enum",
+        "role": [
+            "config",
+            "data"
+        ],
+        "desc": "Specifies which operations should be profiled.",
+        "enum_value": [
+            "off",
+            "slowOp",
+            "all"
+        ],
+        "default_value": "off",
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "operationProfiling:slowOpThresholdMs",
+        "supported": true,
+        "type": "num",
+        "role": [
+            "router",
+            "config",
+            "data"
+        ],
+        "desc": "The slow operation time threshold, in milliseconds. Operations that run for longer than this threshold are considered slow.",
+        "num_validator": {
+            "left": {
+                "value": 0,
+                "include": true
+            }
+        },
+        "default_value": 100,
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "systemLog:logAppend",
+        "supported": true,
+        "type": "boolean",
+        "role": [
+            "router",
+            "config",
+            "data"
+        ],
+        "desc": "When true, mongos or mongod appends new entries to the end of the existing log file when the instance restarts. Without this option, mongod or mongos backs up the existing log and create a new file.",
+        "default_value": false,
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "systemLog:logRotate",
+        "supported": true,
+        "type": "enum",
+        "role": [
+            "router",
+            "config",
+            "data"
+        ],
+        "desc": "Determines the behavior for the logRotate command when rotating the server log and/or the audit log.",
+        "enum_value": [
+            "rename",
+            "reopen"
+        ],
+        "default_value": "rename",
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "systemLog:destination",
+        "supported": true,
+        "type": "enum",
+        "role": [
+            "router",
+            "config",
+            "data"
+        ],
+        "desc": "The destination to which MongoDB sends all log output. Specify either 'file' or 'syslog'. If you specify file, you must also specify 'systemLog.path'.",
+        "enum_value": [
+            "file",
+            "syslog"
+        ],
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "systemLog:path",
+        "supported": true,
+        "type": "str",
+        "role": [
+            "router",
+            "config",
+            "data"
+        ],
+        "desc": "The path of the log file to which mongod or mongos should send all diagnostic logging information, rather than the standard output or the host's syslog. MongoDB creates the log file at the specified path.",
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": false
+    },
+    {
+        "name": "storage:journal:enabled",
+        "supported": true,
+        "type": "boolean",
+        "role": [
+            "config",
+            "data"
+        ],
+        "desc": "Enable or disable the durability journal to ensure data files remain valid and recoverable. This option applies only when you specify the storage.dbPath setting. mongod enables journaling by default.",
+        "default_value": true,
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "storage:engine",
+        "supported": true,
+        "type": "enum",
+        "role": [
+            "config",
+            "data"
+        ],
+        "desc": "The storage engine for the mongod database.",
+        "enum_value": [
+            "wiredTiger",
+            "inMemory"
+        ],
+        "default_value": "wiredTiger",
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "storage:wiredTiger:engineConfig:cacheSizeGB",
+        "supported": true,
+        "type": "num",
+        "role": [
+            "config",
+            "data"
+        ],
+        "desc": "Defines the maximum size of the internal cache that WiredTiger uses for all data.",
+        "num_validator": {
+            "left": {
+                "value": 0.25,
+                "include": true
+            },
+            "right": {
+                "value": 10000,
+                "include": true
+            }
+        },
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "storage:wiredTiger:engineConfig:directoryForIndexes",
+        "supported": true,
+        "type": "boolean",
+        "role": [
+            "config",
+            "data"
+        ],
+        "desc": "When storage.wiredTiger.engineConfig.directoryForIndexes is true, mongod stores indexes and collections in separate subdirectories under the data (i.e. storage.dbPath) directory.",
+        "default_value": false,
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "storage:wiredTiger:collectionConfig:blockCompressor",
+        "supported": true,
+        "type": "enum",
+        "role": [
+            "config",
+            "data"
+        ],
+        "desc": "The storage engine for the mongod database.",
+        "enum_value": [
+            "none",
+            "snappy",
+            "zlib",
+            "zstd"
+        ],
+        "default_value": "snappy",
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "storage:directoryPerDB",
+        "supported": true,
+        "type": "boolean",
+        "role": [
+            "config",
+            "data"
+        ],
+        "desc": "When true, MongoDB uses a separate directory to store data for each database. The directories are under the storage.dbPath directory, and each subdirectory name corresponds to the database name.",
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "storage:dbPath",
+        "supported": true,
+        "type": "str",
+        "role": [
+            "config",
+            "data"
+        ],
+        "desc": "The directory where the mongod instance stores its data.",
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": false
+    },
+    {
+        "name": "net:maxIncomingConnections",
+        "supported": true,
+        "type": "num",
+        "role": [
+            "router",
+            "config",
+            "data"
+        ],
+        "desc": "The maximum number of simultaneous connections that mongos or mongod accepts. This setting has no effect if it is higher than your operating system's configured maximum connection tracking threshold.",
+        "num_validator": {
+            "left": {
+                "value": 1,
+                "include": true
+            }
+        },
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": true
+    },
+    {
+        "name": "net:port",
+        "supported": true,
+        "type": "num",
+        "role": [
+            "router",
+            "config",
+            "data"
+        ],
+        "desc": "The TCP port on which the MongoDB instance listens for client connections.",
+        "num_validator": {
+            "left": {
+                "value": 0,
+                "include": true
+            },
+            "right": {
+                "value": 65535,
+                "include": true
+            }
+        },
+        "modifiedable": false,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": false
+    },
+    {
+        "name": "net:bindIp",
+        "supported": true,
+        "type": "str",
+        "role": [
+            "router",
+            "config",
+            "data"
+        ],
+        "desc": "The hostnames and/or IP addresses and/or full Unix domain socket paths on which mongos or mongod should listen for client connections. You may attach mongos or mongod to any interface. To bind to multiple addresses, enter a list of comma-separated values.",
+        "default_value": "0.0.0.0",
+        "modifiedable": true,
+        "effective_online": false,
+        "support_online_modify": false,
+        "support_batch_modify": false
+    }
+]

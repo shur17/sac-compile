@@ -1,0 +1,40 @@
+server:
+  port: {{ server-port }}
+spring:
+  application:
+    name: sac-config
+  profiles:
+    active: native, dev, prod
+  cloud:
+    # SpringCloud Config 配置
+    config:
+      server:
+        native:
+          search-locations: {{ config-server-native-search-locations }}
+    loadbalancer:
+      health-check:
+        refetch-instances: true
+        # 服务列表刷新间隔，10s
+        refetch-instances-interval: 10000
+        repeat-health-check: false
+# Eureka客户端配置
+eureka:
+  client:
+    fetchRegistry: true
+    registerWithEureka: true
+    # 拉服务列表时间间隔，10s
+    registryFetchIntervalSeconds: 10
+    serviceUrl:
+      defaultZone: {{ eureka-client-service-url-default-zone }}
+  instance:
+    # 服务过期时间，15s
+    lease-expiration-duration-in-seconds: 15
+    # 服务刷新间隔，10s
+    lease-renewal-interval-in-seconds: 10
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 1200000

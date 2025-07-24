@@ -1,0 +1,65 @@
+# /sac/conf/deploy.yml
+
+#SAC数据库配置
+sacDatabase:
+  #DDS节点地址
+  urls:
+    - "127.0.0.1:27017"
+  #SAC数据库名称
+  database: "sequoiasac"
+  #SAC鉴权数据库名称
+  authDatabase: "admin"
+
+#Agent安装路径
+agentPath: "~/sequoiasac"
+
+#是否自动拉起Agent
+autoPullUpAgent: true
+
+#业务主机SSH端口号
+sshPort: 22
+
+#SAC服务日志路径
+logPath: "{SAC_INSTALL_PATH}/logs"
+
+# 告警配置模板语言，en：英文，zh：中文
+alertLanguage: "zh"
+
+#多地登录，默认开启
+loginInfo:
+  allowConcurrentLogin: true
+
+#SAC数据保留天数
+retentionDays:
+  #原始数据保留天数
+  source: 1
+  #监控数据保留天数
+  monitor: 30
+  #告警数据保留天数
+  alert: 30
+  #Agent错误日志保留天数
+  agentErrLog: 10
+  #Agent健康数据的保留天数
+  agentHealth: 1
+
+#SAC服务端配置
+sacServer:
+  gateway:
+    port: 28000
+  registration:
+    port: 28010
+  config:
+    port: 28020
+  user:
+    port: 28050
+  collector:
+    port: 28080
+  monitor:
+    port: 28090
+  deployment:
+    port: 28150
+  alert:
+    port: 28110
+  maintainer:
+    port: 28160
+

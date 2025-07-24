@@ -1,0 +1,517 @@
+metrics:
+  ################################### SQL 实例 ###################################
+  - name: SQL_Aborted_Connects_5m
+    clusterType: 0
+    desc: "5分钟内，未成功连接到实例的次数"
+    scope: "cluster"
+    unit: "digit"
+    reader:
+      sql: sac.inc_query('perf_sql_node{NodeName,Aborted_connects}', 'Aborted_connects', '5m')
+    labels:
+      target: $result.NodeName
+      aborted_connects: $result.Aborted_connects
+    value: $labels.aborted_connects
+
+  - name: SQL_Aborted_Clients_5m
+    clusterType: 0
+    desc: "5分钟内，连接异常中断的次数"
+    scope: "cluster"
+    unit: "digit"
+    reader:
+      sql: sac.inc_query('perf_sql_node{NodeName,Aborted_clients}', 'Aborted_clients', '5m')
+    labels:
+      target: $result.NodeName
+      aborted_clients: $result.Aborted_clients
+    value: $labels.aborted_clients
+
+  - name: SQL_Threads_Connects_ratio
+    clusterType: 0
+    desc: "SQL实例连接数比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: "sac.query('perf_sql_node{NodeName,Threads_connected}')"
+      meta: "sac.query('res_sql_node_config{NodeName,config_max_connections,config_MAX_CONNECTIONS}')"
+    processor: "sac.left_join($perf, 'NodeName', $meta, 'NodeName')"
+    labels:
+      target: $result.NodeName
+      threads_connected: sac.ifNull($result.Threads_connected, 0)
+      max_connections: if $result.config_max_connections==nil && $result.config_MAX_CONNECTIONS==nil  { 0 } else { sac.ifNull(sac.ifNull($result.config_max_connections, $result.config_MAX_CONNECTIONS), 0) }
+    value: sac.percentage($labels.threads_connected, long($labels.max_connections))
+
+  - name: SQL_Threads_Running
+    clusterType: 0
+    desc: "SQL实例活动线程数"
+    scope: "cluster"
+    unit: "digit"
+    reader:
+      sql: "sac.query('perf_sql_node{NodeName,Threads_running}')"
+    labels:
+      target: $result.NodeName
+      threads_running: $result.Threads_running
+    value: $labels.threads_running
+
+  - name: SQL_Threads_Running_5m
+    clusterType: 0
+    desc: "5分钟内，SQL实例活动线程数"
+    scope: "cluster"
+    unit: "digit"
+    reader:
+      sql: "sac.inc_query('perf_sql_node{NodeName,Threads_running}', 'Threads_running', '5m')"
+    labels:
+      target: $result.NodeName
+      threads_running: $result.Threads_running
+    value: $labels.threads_running
+
+  - name: SQL_Opened_Files_ratio
+    clusterType: 0
+    desc: "SQL 实例打开的文件句柄数比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: "sac.query('perf_sql_node{NodeName,Open_files}')"
+      meta: "sac.query('res_sql_node_config{NodeName,config_open_files_limit,config_OPEN_FILES_LIMIT}')"
+    processor: "sac.left_join($perf, 'NodeName', $meta, 'NodeName')"
+    labels:
+      target: $result.NodeName
+      open_files: $result.Open_files
+      open_files_limit: if $result.config_open_files_limit==nil && $result.config_OPEN_FILES_LIMIT==nil { 0 } else { sac.ifNull(sac.ifNull($result.config_open_files_limit, $result.config_OPEN_FILES_LIMIT), 0) }
+    value: sac.percentage($labels.open_files, long($labels.open_files_limit))
+
+  - name: SQL_Error_Instance
+    clusterType: 0
+    desc: "无法访问的 SQL 实例"
+    scope: "cluster"
+    unit: "none"
+    reader:
+      nodes: "sac.query('res_sql_node_health{NodeName,flag,detail}')"
+    processor: "sac.exclude($nodes, 'flag', 0)"
+    labels:
+      target: $result.NodeName
+      flag: $result.flag
+      detail: $result.detail
+    value: $labels.flag
+
+  #################################### SDB ####################################
+
+  - name: SDB_Error_Node
+    clusterType: 0
+    desc: "无法访问的 SequoiaDB 节点"
+    scope: "cluster"
+    unit: "none"
+    reader:
+      nodes: "sac.query('res_sdb_node_health{NodeName,flag,detail}')"
+    processor: "sac.exclude($nodes, 'flag', 0)"
+    labels:
+      target: $result.NodeName
+      flag: $result.flag
+      detail: $result.detail
+    value: $labels.flag
+
+  - name: SDB_Node_Status
+    clusterType: 0
+    desc: "SequoiaDB 节点状态"
+    scope: "cluster"
+    unit: "enumerate"
+    unitOptions: ["Rebuilding","FullSync"]
+    reader:
+      node: "sac.query('perf_sdb_node{NodeName,Status}')"
+    labels:
+      target: $result.NodeName
+      status_num: $result.Status
+      status: "if $result.Status==0 {'Normal'} elsif $result.Status==2 {'Rebuilding'} elsif $result.Status==3 {'FullSync'} else {'Unknown'}"
+    value: $labels.status
+
+  - name: SDB_Node_FTStatus
+    clusterType: 0
+    desc: "SequoiaDB 节点容错状态"
+    scope: "cluster"
+    unit: "enumerate"
+    unitOptions: ["NOSPC","DEADSYNC","SLOWNODE","TRANSERR"]
+    reader:
+      node: "sac.query('perf_sdb_node{NodeName,FTStatus}')"
+    labels:
+      target: $result.NodeName
+      ft_status_num: $result.FTStatus
+      ft_status: "if $result.FTStatus==0 {'Normal'} elsif $result.FTStatus==1 {'NOSPC'} elsif $result.FTStatus==2 {'DEADSYNC'} elsif $result.FTStatus==3 {'SLOWNODE'} elsif $result.FTStatus==4 {'TRANSERR'} else {'Unknown'}"
+    value: $labels.ft_status
+
+  - name: SDB_LSN_Diff_ratio
+    clusterType: 0
+    desc: "SequoiaDB 复制组内 LSN 差异值占总日志空间的比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_sdb_node{NodeName,metadata.GroupName,DiffLSNWithPrimary}')
+      meta: sac.query('metadata_sdb_node{NodeName,TotalLogSpace}')
+    processor: sac.left_join($perf,'NodeName',$meta,'NodeName')
+    labels:
+      target: $result.NodeName
+      group_name: $result.metadata.GroupName
+      diff_lsn_with_primary: $result.DiffLSNWithPrimary
+      total_log_space: sac.ifNull($result.TotalLogSpace, 0) * 1024 * 1024
+    value: sac.percentage($labels.diff_lsn_with_primary, $labels.total_log_space)
+
+  - name: SDB_Connects_Maxpool_ratio
+    clusterType: 0
+    desc: "SequoiaDB 连接数与最大线程池的比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_sdb_node{NodeId,NodeName,TotalNumConnects}')
+      meta: sac.query('res_sdb_node_config{NodeId,NodeName,config_maxpool}')
+    processor: sac.left_join($perf, 'NodeId', $meta, 'NodeId')
+    labels:
+      target: $result.NodeName
+      total_num_connects: $result.TotalNumConnects
+      maxpool: if $result.config_maxpool==nil { 0 } else { $result.config_maxpool }
+    value: sac.percentage($labels.total_num_connects, $labels.maxpool)
+
+  - name: SDB_Connects_Maxconn_ratio
+    clusterType: 0
+    desc: "SequoiaDB 连接数与最大连接数的比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_sdb_node{NodeId,NodeName,TotalNumConnects}')
+      meta: sac.query('res_sdb_node_config{NodeId,NodeName,config_maxconn}')
+    processor: sac.left_join($perf,'NodeId',$meta,'NodeId')
+    labels:
+      target: $result.NodeName
+      total_num_connects: $result.TotalNumConnects
+      maxconn: if $result.config_maxconn==nil { 0 } else { $result.config_maxconn }
+    value: sac.percentage($labels.total_num_connects, $labels.maxconn)
+
+  - name: SDB_FreeLogSpace_ratio
+    clusterType: 0
+    desc: "SequoiaDB 节点复制日志剩余空间比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_sdb_node{NodeId,NodeName,FreeLogSpace,Role}')
+      meta: sac.query('metadata_sdb_node{NodeId,NodeName,TotalLogSpace}')
+    processor: sac.left_join($perf, 'NodeId', $meta, 'NodeId')
+    labels:
+      target: $result.NodeName
+      role: $result.Role
+      free_log_space: $result.FreeLogSpace
+      total_log_space: sac.ifNull($result.TotalLogSpace, 0) * 1024 * 1024
+    value: if $labels.role==1 { 100 } else { sac.percentage($labels.free_log_space, $labels.total_log_space) }
+
+  - name: SDB_DiskFreeSpace_ratio
+    clusterType: 0
+    desc: "SequoiaDB 节点数据路径剩余空间比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_sdb_node{NodeName,DiskFreeSpace,DiskTotalSpace,Role}')
+    labels:
+      target: $result.NodeName
+      role: $result.Role
+      disk_free_space: $result.DiskFreeSpace
+      disk_total_space: $result.DiskTotalSpace
+    value: if $labels.role==1 { 100 } else { sac.percentage($labels.disk_free_space, $labels.disk_total_space) }
+
+  - name: SDB_Primary_Node_Switch
+    clusterType: 0
+    desc: "发生切主的 SequoiaDB 节点"
+    scope: "cluster"
+    unit: "none"
+    reader:
+      node: sac.primary_node_switch_query('NodeName')
+    labels:
+      target: $result.NodeName
+    value: $labels.target
+
+  #################################### SequoiaDB DDS ####################################
+
+  - name: DDS_Error_Node
+    clusterType: 2
+    desc: "无法访问的 SequoiaDB DDS 节点"
+    scope: "cluster"
+    unit: "none"
+    reader:
+      nodes: "sac.query('res_dds_node_health{host,flag,detail}')"
+    processor: "sac.exclude($nodes, 'flag', 0)"
+    labels:
+      target: $result.host
+      flag: $result.flag
+      detail: $result.detail
+    value: $labels.flag
+
+  - name: DDS_Node_Status
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点状态"
+    scope: "cluster"
+    unit: "enumerate"
+    unitOptions: ["RECOVERING", "DOWN", "ROLLBACK", "STARTUP2", "UNKNOWN", "REMOVED"]
+    reader:
+      node: "sac.query('perf_dds_node{metadata,replSetGetStatus_myState,replSetGetStatus_health}')"
+    labels:
+      target: $result.metadata.host
+      status: "if $result.replSetGetStatus_myState != nil && $result.replSetGetStatus_health != nil { if $result.replSetGetStatus_myState==8 || $result.replSetGetStatus_health==0 {'DOWN'} elsif $result.replSetGetStatus_myState==3 {'RECOVERING'} elsif $result.replSetGetStatus_myState==5 {'STARTUP2'} elsif $result.replSetGetStatus_myState==6 {'UNKNOWN'} elsif $result.replSetGetStatus_myState==9 {'ROLLBACK'} elsif $result.replSetGetStatus_myState==10 {'REMOVED'} else {'NORMAL'} } else {'NORMAL'}"
+    value: $labels.status
+
+  - name: DDS_Node_Replication_Latency
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点复制延迟时间"
+    scope: "cluster"
+    unit: "ms"
+    reader:
+      node: "sac.query('perf_dds_node{metadata,replSetGetStatus_replication_lag}')"
+    labels:
+      target: $result.metadata.host
+      replication_lag: if $result.replSetGetStatus_replication_lag==nil { 0 } else { $result.replSetGetStatus_replication_lag }
+    value: $labels.replication_lag
+
+  - name: DDS_Connects_ratio
+    clusterType: 2
+    desc: "SequoiaDB DDS 连接数与最大连接数的比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_dds_node{metadata,connections_current,connections_available}')
+    labels:
+      target: $result.metadata.host
+      current_connects: $result.connections_current
+      max_connects: $result.connections_current + $result.connections_available
+    value: sac.percentage($labels.current_connects, $labels.max_connects)
+
+  - name: DDS_Cursors_ratio
+    clusterType: 2
+    desc: "SequoiaDB DDS 游标数与最大游标数的比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_dds_node{metadata,connections_current,metrics_cursor_open_total}')
+    labels:
+      target: $result.metadata.host
+      open_cursors: $result.metrics_cursor_open_total
+      max_cursors: $result.connections_current * 100
+    value: sac.percentage($labels.open_cursors, $labels.max_cursors)
+
+  - name: DDS_Primary_Node_Switch
+    clusterType: 2
+    desc: "发生切主的 SequoiaDB DDS 节点"
+    scope: "cluster"
+    unit: "none"
+    reader:
+      node: sac.primary_node_switch_query('host')
+    labels:
+      target: $result.host
+    value: $labels.target
+
+  - name: DDS_Node_CPU_Hard_limit_ratio
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点的 CPU 与 CPU 硬限制的比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.inc_query('perf_dds_node{hid, metadata, hardLimit_cpu, server_cpu_logical_processor_count}', 'extraInfo_user_time_us, extraInfo_system_time_us, server_cpu_user, server_cpu_system, server_cpu_idle, server_cpu_io_wait, server_cpu_other', '1m')
+    processor: sac.exclude($perf, 'hardLimit_cpu', 'unlimited')
+    labels:
+      target: $result.metadata.host
+      hardLimit_cpu: sac.ifNull($result.hardLimit_cpu, 0)
+      node_cpu_total: $result.extraInfo_user_time_us + $result.extraInfo_system_time_us
+      server_cpu_total: ($result.server_cpu_user + $result.server_cpu_system + $result.server_cpu_idle + $result.server_cpu_io_wait + $result.server_cpu_other) * 1000
+      server_processor_count: $result.server_cpu_logical_processor_count
+    # value = (node_cpu_total / server_cpu_total) * server_processor_count / hardLimit_cpu
+    value: sac.percentage($labels.node_cpu_total * $labels.server_processor_count, $labels.server_cpu_total * $labels.hardLimit_cpu)
+
+  - name: DDS_Node_Heap_Soft_Limit_ratio
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点的堆栈大小与节点内存软限制的比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_dds_node{metadata, tcmalloc_generic_heap_size, tcmalloc_generic_soft_limit_bytes}')
+    processor: sac.exclude($perf, 'tcmalloc_generic_soft_limit_bytes', 'unlimited')
+    labels:
+      target: $result.metadata.host
+      heap_size: if $result.tcmalloc_generic_heap_size==nil {0} else { $result.tcmalloc_generic_heap_size / 1048576 }
+      soft_limit: if $result.tcmalloc_generic_soft_limit_bytes==nil {0} else { $result.tcmalloc_generic_soft_limit_bytes / 1048576 }
+      heap_size_bytes: sac.ifNull($result.tcmalloc_generic_heap_size, 0)
+      soft_limit_bytes: sac.ifNull($result.tcmalloc_generic_soft_limit_bytes, 0)
+    value: sac.percentage($labels.heap_size_bytes, $labels.soft_limit_bytes)
+
+  - name: DDS_Node_Memory_Hard_Limit_ratio
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点的物理内存大小与节点内存硬限制的比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_dds_node{metadata, mem_resident, hardLimit_memory}')
+    processor: sac.exclude($perf, 'hardLimit_memory', 'unlimited')
+    labels:
+      target: $result.metadata.host
+      mem_resident: sac.ifNull($result.mem_resident, 0)
+      mem_resident_bytes: if $result.mem_resident==nil {0} else { $result.mem_resident * 1024 * 1024 }
+      hardLimit_memory_bytes: sac.ifNull($result.hardLimit_memory, 0)
+      hardLimit_memory: if $result.hardLimit_memory==nil {0} else { $result.hardLimit_memory / 1048576 }
+    value: sac.percentage($labels.mem_resident_bytes, $labels.hardLimit_memory_bytes)
+
+  - name: DDS_Node_Actively_Reclaim_Memory
+    clusterType: 2
+    desc: "发生节点积极回收内存的 SequoiaDB DDS 节点"
+    scope: "cluster"
+    unit: "boolean"
+    reader:
+      perf: sac.query('perf_dds_node{metadata, tcmalloc_generic_heap_size, tcmalloc_generic_soft_limit_bytes, tcmalloc_generic_is_under_oom_risk}')
+    processor: sac.exclude($perf, 'tcmalloc_generic_soft_limit_bytes', 'unlimited')
+    labels:
+      target: $result.metadata.host
+      heap_size: if $result.tcmalloc_generic_heap_size==nil {0} else { $result.tcmalloc_generic_heap_size / 1048576 }
+      soft_limit: if $result.tcmalloc_generic_soft_limit_bytes==nil {0} else { $result.tcmalloc_generic_soft_limit_bytes / 1048576 }
+      is_under_oom_risk: $result.tcmalloc_generic_is_under_oom_risk
+    value: $labels.is_under_oom_risk
+
+  - name: DDS_Node_Memory_Soft_Limit_ratio
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点的物理内存大小与操作系统内存软限制的比例"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_dds_node{metadata, mem_resident, softLimit_memory}')
+    processor: sac.exclude($perf, 'softLimit_memory', 'unlimited')
+    labels:
+      target: $result.metadata.host
+      mem_resident: sac.ifNull($result.mem_resident, 0)
+      mem_resident_bytes: if $result.mem_resident==nil {0} else { $result.mem_resident * 1024 * 1024 }
+      softLimit_memory: sac.ifNull($result.softLimit_memory, 0)
+      softLimit_memory_mb: if $result.softLimit_memory==nil {0} else { $result.softLimit_memory / 1048576 }
+    value: sac.percentage($labels.mem_resident_bytes, $labels.softLimit_memory)
+
+  - name: DDS_Node_Concurrent_Read_Tickets
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点的 concurrent tickets available read 指标"
+    scope: "cluster"
+    unit: "digit"
+    reader:
+      perf: sac.query('perf_dds_node{metadata, role, wiredTiger_concurrentTransactions_read_available}')
+    processor: "sac.exclude($perf, 'role', 5)"
+    labels:
+      target: $result.metadata.host
+      read_available: sac.ifNull($result.wiredTiger_concurrentTransactions_read_available, 128)
+    value: $labels.read_available
+
+  - name: DDS_Node_Concurrent_Write_Tickets
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点的 concurrent tickets available write 指标"
+    scope: "cluster"
+    unit: "digit"
+    reader:
+      perf: sac.query('perf_dds_node{metadata, role, wiredTiger_concurrentTransactions_write_available}')
+    processor: "sac.exclude($perf, 'role', 5)"
+    labels:
+      target: $result.metadata.host
+      write_available: sac.ifNull($result.wiredTiger_concurrentTransactions_write_available, 128)
+    value: $labels.write_available
+
+  - name: DDS_Node_Queued_Read
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点的 queued read 指标"
+    scope: "cluster"
+    unit: "digit"
+    reader:
+      perf: sac.query('perf_dds_node{metadata, role, globalLock_currentQueue_readers}')
+    processor: "sac.exclude($perf, 'role', 5)"
+    labels:
+      target: $result.metadata.host
+      read: sac.ifNull($result.globalLock_currentQueue_readers, 0)
+    value: $labels.read
+
+  - name: DDS_Node_Queued_Write
+    clusterType: 2
+    desc: "SequoiaDB DDS 节点的 queued write 指标"
+    scope: "cluster"
+    unit: "digit"
+    reader:
+      perf: sac.query('perf_dds_node{metadata, role, globalLock_currentQueue_writers}')
+    processor: "sac.exclude($perf, 'role', 5)"
+    labels:
+      target: $result.metadata.host
+      write: sac.ifNull($result.globalLock_currentQueue_writers, 0)
+    value: $labels.write
+
+  - name: DDS_Node_Vector_Index_Cache_Usage
+    clusterType: 2
+    desc: "节点向量索引缓存使用率"
+    scope: "cluster"
+    unit: "percentage"
+    reader:
+      perf: sac.query('perf_dds_node{metadata, metrics_vectorIndex_cache_maxSizeGB, metrics_vectorIndex_cache_usedSizeGB}')
+    processor: sac.exclude($perf, 'metrics_vectorIndex_cache_maxSizeGB', 'unlimited')
+    labels:
+      target: $result.metadata.host
+      maxSizeGB: sac.ifNull($result.metrics_vectorIndex_cache_maxSizeGB, 0)
+      usedSizeGB: sac.ifNull($result.metrics_vectorIndex_cache_usedSizeGB, 0)
+    value: sac.percentage($labels.usedSizeGB, $labels.maxSizeGB)
+
+  - name: DDS_Error_Auto_Backup_Task
+    clusterType: 2
+    desc: "执行失败的 SequoiaDB DDS 周期备份任务"
+    scope: "cluster"
+    unit: "none"
+    reader:
+      tasks: sac.query('backups{cluster_id, status, error, start_ts, end_ts, opid}')
+    processor: sac.include($tasks, 'status', 'error')
+    labels:
+      target: $result.cluster_id
+      detail: $result.error
+      status: $result.status
+      opid: $result.opid
+    value: $labels.status
+
+  #################################### 服务器 ####################################
+  - name: Server_CPU_Usage
+    desc: "服务器 CPU 使用率"
+    scope: "host"
+    unit: "percentage"
+    reader:
+      host: "sac.inc_query('perf_os{metadata,hostname}', 'cpu_user,cpu_system,cpu_wait,cpu_other,cpu_idle', '1m')"
+    labels:
+      target: $result.hostname
+      hid: $result.metadata.hid
+      cpu_idle: $result.cpu_idle
+      cpu_total: $result.cpu_user + $result.cpu_system + $result.cpu_wait + $result.cpu_other + $result.cpu_idle
+    value: sac.percentage($labels.cpu_total - $labels.cpu_idle, $labels.cpu_total)
+
+  - name: Server_Memory_Usage
+    desc: "服务器内存使用率"
+    scope: "host"
+    unit: "percentage"
+    reader:
+      host: "sac.query('perf_os{metadata,hostname,memory_used_size,memory_total_size}')"
+    labels:
+      target: $result.hostname
+      hid: $result.metadata.hid
+      memory_used: $result.memory_used_size
+      memory_total: $result.memory_total_size
+    value: sac.percentage($labels.memory_used, $labels.memory_total)
+
+  - name: Server_Disk_Usage
+    desc: "服务器磁盘使用率"
+    scope: "host"
+    unit: "percentage"
+    reader:
+      host: "sac.query('capacity_file_system{hid,hostname,usable_space,total_space,name}')"
+    labels:
+      target: $result.hostname + ':' + $result.name
+      hid: $result.hid
+      usable_space: $result.usable_space
+      total_space: $result.total_space
+    value: sac.percentage($labels.total_space - $labels.usable_space, $labels.total_space)
+
+  - name: Agent_Status
+    desc: "Agent 状态"
+    scope: "host"
+    unit: "enumerate"
+    unitOptions: [ "Timeout","Offline" ]
+    reader:
+      agent: "sac.query('agent_health{hid,hostname,health_status}')"
+    labels:
+      target: $result.hostname
+      hid: $result.hid
+      status_num: $result.health_status
+      status: "if $result.health_status==0 {'Normal'} elsif $result.health_status==1 {'Timeout'} elsif $result.health_status==2 {'Offline'} else {'Unknown'}"
+    value: $labels.status

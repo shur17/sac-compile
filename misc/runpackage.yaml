@@ -1,0 +1,98 @@
+installInformation: #安装信息
+  productname: sequoiasac   # 固定的配置，只可改变值
+  productfullname: SequoiaDB Administration Center   # 固定的配置，只可改变值
+  installerfilename: ${productname}-${SYS_PRODUCT_VERSION}-${SYS_PLATFORM}${SYS_ENTERPRISE}-installer.${SYS_PLATFORM_EXEC_SUFFIX} # run包名称
+  supportmultversion: true # 是否支持多版本
+  sysconfig: sequoiasac
+  upgradedir: upgrade
+  rootinstallonly: false # 允许非 root 用户安装或升级
+  licensefile: # licensefile
+    en: '${SYS_ORIGIN_DIR}/license/license_en.txt'
+    cn: '${SYS_ORIGIN_DIR}/license/license_zh.txt'
+  user:  #用户
+    enable: true
+    name: sdbadmin
+    groupname: sdbadmin_group
+    password: Admin@1024
+  service:  #服务
+    enable: true
+    name: sac-daemon
+    init: '${SYS_INSTALL_DIR}/conf/service/sac-daemon'
+    systemd: '${SYS_INSTALL_DIR}/conf/service/systemd.service'
+installCheck: # 安装检查
+  enable: true
+  actions:
+    - { name: freeDiskSpace, parameters: [{name: size, value: 20GB}], scope: all, enable: true }
+    - { name: umask, parameters: [{name: mode, value: 0022}], scope: all, enable: true }
+    - { name: hostName, scope: all, enable: true }
+    - { name: etcHosts,  scope: all, enable: true}
+runtimeCheck: # 运行检查
+  enable: true
+  actions:
+    - name: stopService
+      cmd: '${SYS_INSTALL_DIR}/bin/sac_ctl'
+      subcmd: stopall
+      parameters:
+        - name: killservice
+          value: true
+      scope: upgrade
+      enable: true
+postInstallAction: #安装后执行
+  enable: true
+  actions:
+    - name: postInstall
+      cmd: '${SYS_INSTALL_DIR}/tools/post-install/post_install.sh'
+      scope: all
+      enable: true
+    - name: restartAll
+      cmd: '${SYS_INSTALL_DIR}/bin/sac_ctl'
+      subcmd: restartall
+      scope: cover
+      enable: true
+preUninstallAction: #卸载前执行
+  enable: true
+  actions:
+    - name: preUninstall
+      cmd: '${SYS_INSTALL_DIR}/bin/sac_admin'
+      subcmd: dropsac
+      parameters:
+        - name: keepdata
+          value:
+            from: keep_data
+            type: BOOL
+            default: true
+            description:
+              - cn: 是否保留 SAC 数据库的数据
+              - en: Whether to keep SAC database
+            explanation:
+              - cn: 是否保留 SAC 数据库的数据
+              - en: Whether to keep SAC database
+        - name: user
+          value:
+            from: dbuser
+            type: STRING
+            default: ""
+            description:
+              - cn: "SAC 数据库的用户名"
+              - en: "Username of SAC database"
+            explanation:
+              - cn: "SAC 数据库的用户名"
+              - en: "Username of SAC database"
+        - name: passwd
+          value:
+            from: dbpwd
+            type: PASSWORD
+            default: ""
+            description:
+              - cn: "SAC 数据库的用户密码"
+              - en: "User password of SAC database"
+            explanation:
+              - cn: "SAC 数据库的用户密码"
+              - en: "User password of SAC database"
+        - name: killservice
+          value: true
+        - name: force
+          value: true
+      scope: all
+      enable: true
+      privilege: false

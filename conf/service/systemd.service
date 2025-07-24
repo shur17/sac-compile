@@ -1,0 +1,13 @@
+# sac daemon file
+
+[Unit]
+Description=SAC Daemon
+After=network.target
+
+[Install]
+WantedBy=multi-user.target
+
+[Service]
+User=SYS_USER
+Type=simple
+ExecStart=SYS_INSTALL_DIR/tools/daemon/sac_daemon

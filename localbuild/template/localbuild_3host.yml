@@ -1,0 +1,199 @@
+# 机器信息
+hosts:
+  - hostname: "${hostname1}"
+    user: "root"
+    password: "sequoiadb"
+  - hostname: "${hostname2}"
+    user: "root"
+    password: "sequoiadb"
+  - hostname: "${hostname3}"
+    user: "root"
+    password: "sequoiadb"
+
+sac_database:
+  dds:
+    installPath: "/opt/sequoiadds"
+    replicaMode:
+      replset:
+        - replName: "rep_rs"
+          configSvr: false
+          members:
+            - host: "${hostname1}"
+              port: 37017
+              dbPath: "/opt/sequoiadds/data/37017/db"
+              systemLog: "/opt/sequoiadds/data/37017/log/mongod.log"
+
+
+business_database:
+  sequoiadb:
+    - user: ""
+      password: ""
+      installPath: "/opt/sequoiadb"
+      coord:
+        - hostname: "${hostname2}"
+          service: 11810
+          dbpath: "/opt/sequoiadb/database/coord/11810"
+      cata:
+        - hostname: "${hostname2}"
+          service: 11800
+          dbpath: "/opt/sequoiadb/database/cata/11800"
+      groups:
+        - name: "group1"
+          hostname: "${hostname2}"
+          service: 11820
+          dbpath: "/opt/sequoiadb/database/data/11820"
+        - name: "group2"
+          hostname: "${hostname2}"
+          service: 11830
+          dbpath: "/opt/sequoiadb/database/data/11830"
+      instances:
+        mysql:
+          user: "sdbadmin"
+          password: "sdbadmin"
+          installPath: "/opt/sequoiasql/mysql"
+          groupName: "mysql_group"
+          nodes:
+            - hostname: "${hostname2}"
+              port: 3306
+              instanceName: "inst1"
+            - hostname: "${hostname2}"
+              port: 3307
+              instanceName: "inst2"
+        mariadb:
+          user: "sdbadmin"
+          password: "sdbadmin"
+          installPath: "/opt/sequoiasql/mariadb"
+          groupName: "mariadb_group"
+          nodes:
+            - hostname: "${hostname2}"
+              port: 6101
+              instanceName: "inst1"
+            - hostname: "${hostname2}"
+              port: 6102
+              instanceName: "inst2"
+  dds:
+    installPath: "/opt/sequoiadds"
+    replicaMode:
+      auth:
+        username: "admin"
+        password: "admin"
+        rootUser: "root"
+        rootPassword: "root"
+        sacMaintainerUser: 'sac_maintainer'
+        sacMaintainerPassword: 'Admin@1024'
+        sacBackupUser: 'sac_backup'
+        sacBackupPassword: 'Admin@1024'
+        keyFile: "/opt/sequoiadds/replica.keyfile"
+      replset:
+        - replName: "rep1"
+          configSvr: false
+          members:
+            - host: "${hostname3}"
+              port: 27007
+              dbPath: "/opt/sequoiadds/data/27007/db"
+              systemLog: "/opt/sequoiadds/data/27007/log/mongod.log"
+            - host: "${hostname3}"
+              port: 27008
+              dbPath: "/opt/sequoiadds/data/27008/db"
+              systemLog: "/opt/sequoiadds/data/27008/log/mongod.log"
+            - host: "${hostname3}"
+              port: 27009
+              dbPath: "/opt/sequoiadds/data/27009/db"
+              systemLog: "/opt/sequoiadds/data/27009/log/mongod.log"
+              arbiterOnly: true
+
+    shardMode:
+      auth:
+        username: "admin"
+        password: "admin"
+        rootUser: "root"
+        rootPassword: "root"
+        sacMaintainerUser: 'sac_maintainer'
+        sacMaintainerPassword: 'Admin@1024'
+        sacBackupUser: 'sac_backup'
+        sacBackupPassword: 'Admin@1024'
+        keyFile: "/opt/sequoiadds/shard.keyfile"
+      routers:
+        members:
+          - host: "${hostname3}"
+            port: 27017
+            systemLog: "/opt/sequoiadds/data/27017/log/mongos.log"
+          - host: "${hostname3}"
+            port: 27018
+            systemLog: "/opt/sequoiadds/data/27018/log/mongos.log"
+          - host: "${hostname3}"
+            port: 27019
+            systemLog: "/opt/sequoiadds/data/27019/log/mongos.log"
+      replset:
+        - replName: "rep2"
+          configSvr: true
+          members:
+            - host: "${hostname3}"
+              port: 27027
+              dbPath: "/opt/sequoiadds/data/27027/db"
+              systemLog: "/opt/sequoiadds/data/27027/log/mongod.log"
+            - host: "${hostname3}"
+              port: 27028
+              dbPath: "/opt/sequoiadds/data/27028/db"
+              systemLog: "/opt/sequoiadds/data/27028/log/mongod.log"
+            - host: "${hostname3}"
+              port: 27029
+              dbPath: "/opt/sequoiadds/data/27029/db"
+              systemLog: "/opt/sequoiadds/data/27029/log/mongod.log"
+        - replName: "rep1"
+          members:
+            - host: "${hostname3}"
+              port: 27037
+              dbPath: "/opt/sequoiadds/data/27037/db"
+              systemLog: "/opt/sequoiadds/data/27037/log/mongod.log"
+            - host: "${hostname3}"
+              port: 27038
+              dbPath: "/opt/sequoiadds/data/27038/db"
+              systemLog: "/opt/sequoiadds/data/27038/log/mongod.log"
+            - host: "${hostname3}"
+              port: 27039
+              dbPath: "/opt/sequoiadds/data/27039/db"
+              systemLog: "/opt/sequoiadds/data/27039/log/mongod.log"
+
+
+elf:
+  hostname: "${hostname3}"
+  installPath: "/opt/sequoiasac-elf"
+  elasticsearch:
+    port: 28212
+    password: "sequoiadb"
+    jvmOptions: "-Xms1g -Xmx1g"
+  logstash:
+    port: 28215
+    jvmOptions: "-Xms1g -Xmx1g"
+
+sac:
+  hostname: "${hostname1}"
+  installPath: "/opt/sequoiasac"
+  sacServer:
+    gateway:
+      port: 28000
+    registration:
+      port: 28010
+    config:
+      port: 28020
+    user:
+      port: 28050
+    collector:
+      port: 28080
+    monitor:
+      port: 28090
+    deployment:
+      port: 28150
+    alert:
+      port: 28110
+
+runtest:
+  mysql:
+    installPath: "/opt/sequoiasql/mysql"
+  mariadb:
+    installPath: "/opt/sequoiasql/mariadb"
+  dds:
+    installPath: "/opt/sequoiadds"
+  sequoiadb:
+    installPath: "/opt/sequoiadb"

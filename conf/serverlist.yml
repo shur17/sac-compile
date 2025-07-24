@@ -1,0 +1,20 @@
+# /sac/conf/serverlist.yml
+
+#是否强制部署
+#当该选项为true时，会覆盖掉已经安装的Agent
+force: false
+
+#SAC相关信息
+sac:
+  #SAC网关地址
+  gatewayUrl: "127.0.0.1:28000"
+  #SAC是否启用 SSL
+  sslEnabled: false
+  #Agent监听的端口号，默认为28081
+  agentPort: 28081
+
+#Agent 采集器所在的服务器列表
+hosts:
+  - "<server host ip | hostname>"
+  - "<server host ip | hostname>"
+  - "<server host ip | hostname>"

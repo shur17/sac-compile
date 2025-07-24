@@ -1,0 +1,73 @@
+sac:
+  collectStrategies:
+    - name: "DDS_DATABASE_META"
+      enable: true
+      interval: 30000
+
+    - name: "DDS_DATABASE_CAPACITY"
+      enable: true
+      interval: 60000
+
+    - name: "DDS_COLLECTION_META"
+      enable: true
+      interval: 30000
+
+    - name: "DDS_COLLECTION_CAPACITY"
+      enable: true
+      interval: 60000
+
+    - name: "DDS_SHARD_STATS"
+      enable: true
+      interval: 10000
+
+    - name: "DDS_SERVICE_META"
+      enable: true
+      interval: 10000
+
+    - name: "DDS_NODE_META"
+      enable: true
+      interval: 10000
+
+    - name: "DDS_NODE"
+      enable: true
+      interval: 10000
+
+    - name: "DDS_NODE_HEALTH"
+      enable: true
+      interval: 5000
+
+    - name: "DDS_QUERY"
+      enable: true
+      interval: 5000
+        
+    - name: "DDS_NODE_MONITOR"
+      enable: true
+      interval: 60000
+
+    - name: "DDS_SERVICE_MONITOR"
+      enable: true
+      interval: 60000
+
+    - name: "DDS_AGGR_CLUSTER"
+      enable: true
+      interval: null
+
+    - name: "DDS_AGGR_SERVICE"
+      enable: true
+      interval: null
+
+    - name: "DDS_AGGR_DIGEST"
+      enable: true
+      interval: null
+
+    - name: "DDS_AGGR_DIGEST_ANALYZE"
+      enable: true
+      interval: 30000
+
+    - name: "DDS_AGGR_CL_ANALYZE"
+      enable: true
+      interval: 30000
+
+    - name: "DDS_AGGR_DB_ANALYZE"
+      enable: true
+      interval: 30000

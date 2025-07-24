@@ -1,0 +1,20 @@
+spring:
+  cloud:
+    gateway:
+      httpclient:
+        ssl:
+          # 让网关信任所有下游服务
+          useInsecureTrustManager: true
+        pool:
+          # 空闲连接超时时间，单位：ms
+          maxIdleTime: 50000
+  # 公共配置文件
+  profiles:
+    include: common
+  resources:
+    static-locations: file:${sac.dir}/web/
+
+sac:
+  filter:
+    # 是否开启IP校验
+    ipVerificationEnabled: true

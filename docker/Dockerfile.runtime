@@ -1,0 +1,10 @@
+FROM eclipse-temurin:8-jre-jammy
+
+ENV YQ_VERSION=v4.44.3
+RUN set -eux; \
+    dpkgArch="$(dpkg --print-architecture | awk -F- '{ print $NF }')"; \
+    wget https://github.com/mikefarah/yq/releases/download/${YQ_VERSION}/yq_linux_${dpkgArch} -O /usr/bin/yq && chmod +x /usr/bin/yq; \
+    apt-get update; \
+    apt-get install -y vim iputils-ping; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

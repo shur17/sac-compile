@@ -1,0 +1,120 @@
+#!/bin/bash
+
+#   exit code list:
+#   77    permission denied
+
+# check user
+# if neither root nor sac user, exit with PERMISSION_DENIED
+function check_user()
+{
+  SAC_USER=`ls -l $SAC_DAEMON_INSTALL_PATH/daemon/sac_daemon | awk '{print $3}'`
+
+  local cur_user=`whoami`
+  if [ "$cur_user" != "$SAC_USER" -a "$cur_user" != "root" ]
+  then
+    echo "ERROR: './sac_daemon' requires [$SAC_USER] permission" >&2
+    exit 77
+  fi
+}
+
+# if root: change to sac user to execute command
+# if sac user: execute command
+function exec_cmd()
+{
+   local cmd="$1"
+   local cur_user=`whoami`
+
+   if [ $cur_user == "root" ]
+   then
+      su - $SAC_USER -c "${cmd}"
+      return $?
+   else
+      eval "${cmd}"
+      return $?
+   fi
+}
+
+# print log
+function print_log()
+{
+  local log_level=$1
+  local log=$2
+  local date=`date "+%Y-%m-%d %H:%M:%S"`
+  echo "$date $log_level: $log"
+}
+
+# get all services
+function get_all_services()
+{
+  SAC_DAEMON_SERVICES=`$SAC_PATH/bin/sac_ctl list | grep -v "NAME" | grep -v "Total:" | awk '{print $1 }'`
+}
+
+function keep_service_start()
+{
+  get_all_services
+
+  local service_name=""
+  for service_name in $SAC_DAEMON_SERVICES
+  do
+    local exist_process=false
+    local exist_pid_file=false
+
+    # check process exist or not
+    local result=`$SAC_PATH/bin/sac_ctl status $service_name`
+    if [ 0 == $? ]; then
+       local total_num=`echo "$result" | grep "Total: " | awk -F "Total: " '{print $2}' | awk -F "; " '{print $1}'`
+       local process_num=`echo "$result" | grep "Run: " | awk -F "Run: " '{print $2}'`
+       test $total_num == $process_num && exist_process=true
+    fi
+
+    if [ true == $exist_process ]; then
+       continue
+    fi
+
+    # check pid file exist or not
+    local pid_file="$SAC_PATH/conf/.$service_name.pid"
+    test -f $pid_file && exist_pid_file=true
+
+    # if process does not exist but pid file exists, try to start it
+    if [ true == $exist_pid_file ]; then
+      print_log "INFO" "Service $service_name process doesn't exist, try to start it."
+      $SAC_PATH/bin/sac_ctl start $service_name
+    fi
+  done
+}
+
+function start()
+{
+  # touch pid file
+  exec_cmd "echo $$ > $SAC_DAEMON_PID_FILE"
+
+  # keep all services alive
+  # if service shutdown unexpectedly, sac-daemon will restart the service
+  while true
+  do
+    keep_service_start
+    exec_cmd "sleep 10"
+  done
+}
+
+#get path
+function get_path()
+{
+  dir_name=`dirname $0`
+  if [[ ${dir_name:0:1} != "/" ]]; then
+    SAC_DAEMON_BIN_PATH=$(pwd)/$dir_name
+  else
+    SAC_DAEMON_BIN_PATH=$dir_name
+  fi
+
+  cd $SAC_DAEMON_BIN_PATH/../ && SAC_DAEMON_INSTALL_PATH=`pwd`
+
+  cd $SAC_DAEMON_INSTALL_PATH/../ && SAC_PATH=`pwd`
+  SAC_DAEMON_PID_FILE=$SAC_PATH/conf/.sac-daemon.pid
+}
+
+get_path
+
+check_user
+
+start

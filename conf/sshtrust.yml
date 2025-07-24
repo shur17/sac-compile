@@ -1,0 +1,37 @@
+# sshtrust.yml
+
+# 本文件用于配置 SSH 信任关系，包含控制主机和远程主机的连接信息。
+# 每个主机可以配置以下信息：
+#   - host: 主机名或 IP 地址（必填）
+#   - user: SSH 用户名（可选，默认为全局配置或交互式输入）
+#   - passwd: SSH 密码（可选，默认为全局配置或交互式输入）
+#   - port: SSH 端口号（可选，默认为 22 或全局配置）
+
+# 优先级说明：
+#   1. 如果主机配置了 user、passwd 或 port，则使用该配置。
+#   2. 如果主机未配置上述项，则使用 --ssh-user、--ssh-passwd、--ssh-port 指定的全局配置。
+#   3. 如果全局配置也未指定，则通过交互式输入获取。
+
+# 控制主机：远程主机需要信任的主机
+controlHost:
+  host: "localhost"
+  # user: ""
+  # passwd: ""
+  # port: 22
+
+# 远程主机列表
+remoteHosts:
+  - host: "<hostname | hostIp>"
+    # user: ""
+    # passwd: ""
+    # port: 22
+
+  - host: "<hostname | hostIp>"
+    # user: ""
+    # passwd: ""
+    # port: 22
+
+  - host: "<hostname | hostIp>"
+    # user: ""
+    # passwd: ""
+    # port: 22

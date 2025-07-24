@@ -1,0 +1,10 @@
+# common 为通用账号密码配置 root、sdbadmin 的默认密码分别为 sequoiadb、Admin@1024
+common:
+  root: "sequoiadb"
+  sdbadmin: "Admin@1024"
+
+# 若有机器密码不一致，可以通过 specific 单独配置，如下示例
+#specific:
+#    host1:
+#        root: "test_0415"
+#        sdbadmin: "sdbadmin"

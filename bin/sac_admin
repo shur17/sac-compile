@@ -1,0 +1,567 @@
+#!/bin/bash
+
+#   exit code list:
+#   0     successful termination
+#   2     sac-deploy-tool.jar was not found
+#   64    command line usage error
+#   77    permission denied
+# check user
+# if neither root nor sac user: exit with PERMISSION_DENIED
+function check_user()
+{
+  local mode=$1
+
+  SAC_USER=`ls -l $SAC_ADMIN_INSTALL_PATH/bin/sac_admin | awk '{print $3}'`
+
+  local cur_user=`whoami`
+  if [ "$cur_user" != "$SAC_USER" -a "$cur_user" != "root" ]
+  then
+    echo "ERROR: './sac_admin $mode' requires SAC_USER [$SAC_USER] permission" >&2
+    exit 77
+  fi
+}
+
+# check whether has write permission for log path /tmp/sequoiasac/log
+function check_log_path_permission()
+{
+  local tmp_log_path="/tmp/sequoiasac/log"
+  while [ ! -d $tmp_log_path ]; do
+    tmp_log_path=$(dirname "$tmp_log_path")
+  done
+  if [ ! -w $tmp_log_path ]; then
+    echo "no write permission for path: $tmp_log_path"
+    return 1
+  fi
+  local log_path="/tmp/sequoiasac/log"
+  if [ ! -d $log_path ]; then
+    exec_cmd "mkdir -p $log_path"
+  fi
+  chmod u+w,g+w,o+w -R $log_path > /dev/null 2>&1
+  return 0
+}
+
+function check_jdk()
+{
+  local arch=`uname -m`
+  _java="$SAC_ADMIN_INSTALL_PATH/lib/java/$arch/bin/java"
+
+  if [[ ! -f "$_java" ]]; then
+    echo "expected java file was not found: $_java"
+    exit 1
+  fi
+
+  if [[ ! -x "$_java" ]]; then
+    echo "java file was not executable: $_java"
+    exit 1
+  fi
+}
+
+# if root: change to sac user to execute command
+# if sac user: execute command
+function exec_cmd()
+{
+   local cmd="$1"
+   local cur_user=`whoami`
+
+   if [ $cur_user == "root" ]
+   then
+      su - $SAC_USER -c "${cmd}"
+      return $?
+   else
+      eval "${cmd}"
+      return $?
+   fi
+}
+
+# check sac-deploy-tool.jsr is exists
+function check_jar_is_exists()
+{
+  local jar_path=$1
+  if [[ -f $jar_path ]]; then
+    return 0
+  else
+    echo "ERROR: $jar_path was not found."
+    exit 2
+  fi
+}
+
+function help()
+{
+  echo "sac_admin is a tool for managing SAC."
+  echo ""
+  echo "Usage:"
+  echo "  sac_admin deploysac [-c | --config CONFIG] [-f | --force FORCE] [-u | --user USER] [-p | --passwd PASSWD]"
+  echo "  sac_admin dropsac [-f | --force FORCE] [-k | --keepdata KEEPDATA] [-u | --user USER] [-p | --passwd PASSWD]"
+  echo ""
+  echo "  sac_admin getagentmetric [-i | --interval INTERVAL] [-t | --times TIMES] [-c | --config CONFIG] [--sac-user SAC_USER] [--sac-passwd SAC_PASSWD]"
+  echo ""
+  echo "  sac_admin discover [-c | --config CONFIG] [--sac-user SAC_USER] [--sac-passwd SAC_PASSWD]"
+  echo "  sac_admin discoverdds [-c | --config CONFIG] [--sac-user SAC_USER] [--sac-passwd SAC_PASSWD]"
+  echo ""
+  echo "  sac_admin dropddsbackupagent <-c | --config CONFIG> [--sac-user SAC_USER] [--sac-passwd SAC_PASSWD]"
+  echo ""
+  if [[ $SAC_ADMIN_LIST == true ]]; then
+    echo "  sac_admin encrypt [-p | --passwd PASSWD]"
+    echo ""
+  fi
+  echo "  sac_admin createtrust [-c | --config CONFIG] [--ssh-port SSH_PORT] [--ssh-user SSH_USER] [--ssh-passwd SSH_PASSWD] [--key-file KEY_FILE]"
+  echo ""
+  echo "  sac_admin checktrust [-c | --config CONFIG] [--ssh-port SSH_PORT] [--ssh-user SSH_USER] [--ssh-passwd SSH_PASSWD] [--key-file KEY_FILE]"
+  echo ""
+  echo "  sac_admin upgrade [--sac-user SAC_USER] [--sac-passwd SAC_PASSWD] [--sac-version-upgrade-rule-file SAC_VERSION_UPGRADE_RULE_FILE] [--agent-version-upgrade-rule-file AGENT_VERSION_UPGRADE_RULE_FILE]"
+  echo "Options:"
+  echo "  -c, --config           config file path"
+  echo "                         deploysac will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/deploy.yml"
+  echo "                         dropddsbackupagent will use the configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/serverlist.yml, please manually specify the config file using the <-c | --config> option"
+  echo "                         getagentmetric will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/serverlist.yml"
+  echo "                         discover will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/discover.yml"
+  echo "                         discoverdds will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/discover-dds.yml"
+  echo "                         createtrust and checktrust will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/sshtrust.yml"
+  echo "  -f, --force            whether to reinitialize SAC database when deploy SAC or force uninstallation when drop SAC, default value is false"
+  echo "  -k, --keepdata         whether to keep SAC database when drop SAC, default value is true"
+  echo "  -u, --user             user for logging SAC database"
+  echo "  -p, --passwd           password for logging SAC database"
+  echo "  --sac-user             user for logging SAC"
+  echo "  --sac-passwd           password for logging SAC"
+  echo "  --ssh-port             port to connect to the host using SSH"
+  echo "  --ssh-user             user to connect to the host using SSH"
+  echo "  --ssh-passwd           password to connect to the host using SSH"
+  echo "  --key-file             private key file to connect to the host using SSH"
+  echo "  -h, --help             output help message, then exit"
+  echo "  -l, --list             list hidden subcommand"
+}
+
+function exec_cmd_with_actual_exit_code()
+{
+  # 给 $ 字符前面加上 \ 转义符
+  local command=$(echo "$1" | sed 's/\$/\\$/g')
+  local grep_info=$2
+
+  local cur_timestamp=$(date +%s%6N)
+  local check_sac_admin_log="/tmp/sequoiasac/log/sac_admin_$cur_timestamp.log"
+  exec_cmd "script -c \"$command; exit \" -q $check_sac_admin_log"
+
+  local success_info=`cat $check_sac_admin_log | grep -E "$grep_info"`
+  test -f $check_sac_admin_log && exec_cmd "rm -rf $check_sac_admin_log"
+  test -z "$success_info" && exit 1 || exit 0
+}
+
+function deploysac()
+{
+  check_jar_is_exists $SAC_ADMIN_SAC_TOOL_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: deploysac [options]"
+    echo "  -c, --config           config file path"
+    echo "                         deploysac will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/deploy.yml"
+    echo "  -f, --force            whether to reinitialize SAC database when deploy SAC, default value is false"
+    echo "  -u, --user             user for logging SAC database"
+    echo "  -p, --passwd           password for logging SAC database"
+    exit 0
+  fi
+  test -z $SAC_ADMIN_CONF_PATH && SAC_ADMIN_CONF_PATH=$SAC_ADMIN_DEPLOY_SAC_CONF_PATH
+  local args="deploysac -c $SAC_ADMIN_CONF_PATH -f $SAC_ADMIN_FORCE"
+  test -z $SAC_ADMIN_USER || args="${args} -u '$SAC_ADMIN_USER'"
+  test -z $SAC_ADMIN_PASSWD || args="${args} -p '$SAC_ADMIN_PASSWD'"
+  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to deploy SAC\\.|SAC has been deployed\\."
+}
+
+function dropsac()
+{
+  check_jar_is_exists $SAC_ADMIN_SAC_TOOL_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: dropsac [options]"
+    echo "  -f, --force            whether to force uninstallation when drop SAC, default value is false"
+    echo "  -k, --keepdata         whether to keep SAC database when drop SAC, default value is true"
+    echo "  -u, --user             user for logging SAC database"
+    echo "  -p, --passwd           password for logging SAC database"
+    exit 0
+  fi
+  if [[ $SAC_ADMIN_USER =~ "--passwd" && $SAC_ADMIN_PASSWD =~ "" ]]; then
+    SAC_ADMIN_USER="sdbadmin"
+    SAC_ADMIN_PASSWD="sdbadmin"
+  fi
+  local args="dropsac -k $SAC_ADMIN_KEEP_DATA -f $SAC_ADMIN_FORCE"
+  test -z $SAC_ADMIN_KILL_SERVICE || args="${args} --killservice $SAC_ADMIN_KILL_SERVICE"
+  test -z $SAC_ADMIN_USER || args="${args} -u '$SAC_ADMIN_USER'"
+  test -z $SAC_ADMIN_PASSWD || args="${args} -p '$SAC_ADMIN_PASSWD'"
+  local cur_timestamp=$(date +%s%6N)
+  local check_sac_admin_log="/tmp/sequoiasac/log/sac_admin_$cur_timestamp.log"
+  # 给 $ 字符前面加上 \ 转义符
+  args=$(echo "$args" | sed 's/\$/\\$/g')
+  exec_cmd "script -c \"$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args; exit \" -q $check_sac_admin_log"
+  if [[ $SAC_ADMIN_FORCE == true ]]; then
+    exit 0
+  fi
+  local success_to_drop_info=`cat $check_sac_admin_log | grep -E "Success to drop SAC\\.|SAC has been dropped\\.|Success to clean SAC database\\."`
+  test -z "$success_to_drop_info" && exit 1 || exit 0
+}
+
+function dropddsbackupagent()
+{
+  check_jar_is_exists $SAC_ADMIN_SAC_TOOL_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: dropddsbackupagent [options]"
+    echo "  -c, --config           config file path"
+    echo "                         dropddsbackupagent will use the configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/serverlist.yml, please manually specify the config file using the <-c | --config> option"
+    echo "  --sac-user             user for logging SAC"
+    echo "  --sac-passwd           password for logging SAC"
+    exit 0
+  fi
+  local args="dropddsbackupagent"
+  test -z $SAC_ADMIN_CONF_PATH || args="${args} -c $SAC_ADMIN_CONF_PATH"
+  test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
+  test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
+  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to drop dds backup agent"
+}
+
+function getagentmetric()
+{
+  check_jar_is_exists $SAC_ADMIN_SAC_TOOL_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: getagentmetric [options]"
+    echo "  -c, --config           config file path"
+    echo "                         getagentmetric will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/serverlist.yml"
+    echo "  -i, --interval         the interval between get the agent metric, the unit is second, default value is 10"
+    echo "  -t. --times            the times to get the agent metric, default value is 1"
+    echo "  --sac-user             user for logging SAC"
+    echo "  --sac-passwd           password for logging SAC"
+    exit 0
+  fi
+  test -z $SAC_ADMIN_CONF_PATH && SAC_ADMIN_CONF_PATH=$SAC_ADMIN_GET_AGENT_METRIC_CONF_PATH
+  local args="getagentmetric -c $SAC_ADMIN_CONF_PATH -i $SAC_ADMIN_INTERVAL -t $SAC_ADMIN_TIMES"
+  test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
+  test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
+  exec_cmd "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args"
+}
+
+function discover()
+{
+  check_jar_is_exists $SAC_ADMIN_SAC_TOOL_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: discover [options]"
+    echo "  -c, --config           config file path"
+    echo "                         discover will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/discover.yml"
+    echo "  --sac-user             user for logging SAC"
+    echo "  --sac-passwd           password for logging SAC"
+    exit 0
+  fi
+  test -z $SAC_ADMIN_CONF_PATH && SAC_ADMIN_CONF_PATH=$SAC_ADMIN_DISCOVER_CONF_PATH
+  local args="discover -c $SAC_ADMIN_CONF_PATH"
+  test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
+  test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
+  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to discover SequoiaDB cluster\\."
+}
+
+function discoverdds()
+{
+  check_jar_is_exists $SAC_ADMIN_SAC_TOOL_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: discoverdds [options]"
+    echo "  -c, --config           config file path"
+    echo "                         discoverdds will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/discover-dds.yml"
+    echo "  --sac-user             user for logging SAC"
+    echo "  --sac-passwd           password for logging SAC"
+    exit 0
+  fi
+  test -z $SAC_ADMIN_CONF_PATH && SAC_ADMIN_CONF_PATH=$SAC_ADMIN_DISCOVER_DDS_CONF_PATH
+  local args="discoverdds -c $SAC_ADMIN_CONF_PATH"
+  test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
+  test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
+  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to discover DDS cluster\\."
+}
+
+function encrypt()
+{
+  check_jar_is_exists $SAC_ADMIN_SAC_TOOL_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: encrypt [options]"
+    echo "  -p, --passwd           password for logging SAC database"
+    exit 0
+  fi
+  local args="encrypt"
+  test -z $SAC_ADMIN_PASSWD || args="${args} -p '$SAC_ADMIN_PASSWD'"
+  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to encrypt\\."
+}
+
+function createtrust()
+{
+  check_jar_is_exists $SAC_ADMIN_SDB_SSH_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: createtrust [options]"
+    echo "  --ssh-port             port to connect to the host using SSH"
+    echo "  --ssh-user             user to connect to the host using SSH"
+    echo "  --ssh-passwd           password to connect to the host using SSH"
+    echo "  --key-file             private key file to connect to the host using SSH"
+    exit 0
+  fi
+  test -z $SAC_ADMIN_CONF_PATH && SAC_ADMIN_CONF_PATH=$SAC_ADMIN_SSHTRUST_CONF_PATH
+  local args="create -c $SAC_ADMIN_CONF_PATH"
+  test -z $SAC_ADMIN_SSH_PORT || args="${args} --ssh-port $SAC_ADMIN_SSH_PORT"
+  test -z $SAC_ADMIN_SSH_USER || args="${args} --ssh-user '$SAC_ADMIN_SSH_USER'"
+  test -z $SAC_ADMIN_SSH_PASSWD || args="${args} --ssh-passwd '$SAC_ADMIN_SSH_PASSWD'"
+  test -z $SAC_ADMIN_KEY_FILE || args="${args} --key-file $SAC_ADMIN_KEY_FILE"
+  exec_cmd "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SDB_SSH_JAR_PATH $args"
+}
+
+function checktrust()
+{
+  check_jar_is_exists $SAC_ADMIN_SDB_SSH_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: checktrust [options]"
+    echo "  --ssh-port             port to connect to the host using SSH"
+    echo "  --ssh-user             user to connect to the host using SSH"
+    echo "  --ssh-passwd           password to connect to the host using SSH"
+    echo "  --key-file             private key file to connect to the host using SSH"
+    exit 0
+  fi
+  test -z $SAC_ADMIN_CONF_PATH && SAC_ADMIN_CONF_PATH=$SAC_ADMIN_SSHTRUST_CONF_PATH
+  local args="check -c $SAC_ADMIN_CONF_PATH"
+  test -z $SAC_ADMIN_SSH_PORT || args="${args} --ssh-port $SAC_ADMIN_SSH_PORT"
+  test -z $SAC_ADMIN_SSH_USER || args="${args} --ssh-user '$SAC_ADMIN_SSH_USER'"
+  test -z $SAC_ADMIN_SSH_PASSWD || args="${args} --ssh-passwd '$SAC_ADMIN_SSH_PASSWD'"
+  test -z $SAC_ADMIN_KEY_FILE || args="${args} --key-file $SAC_ADMIN_KEY_FILE"
+  exec_cmd "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SDB_SSH_JAR_PATH $args"
+}
+
+function upgrade()
+{
+  check_jar_is_exists $SAC_ADMIN_UPGRADE_JAR_PATH
+  if [[ $SAC_PRINT_HELP == true ]]; then
+    echo "Usage: upgrade"
+    echo "  --sac-user             user for logging SAC"
+    echo "  --sac-passwd           password for logging SAC"
+    exit 0
+  fi
+  get_sac_install_info
+  test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
+  test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
+  test -z $SAC_VERSION_UPGRADE_RULE_FILE || args="${args} --sac-version-upgrade-rule-file $SAC_VERSION_UPGRADE_RULE_FILE"
+  test -z $AGENT_VERSION_UPGRADE_RULE_FILE || args="${args} --agent-version-upgrade-rule-file $AGENT_VERSION_UPGRADE_RULE_FILE"
+  exec_cmd "$_java $DEFAULT_JVM_OPTS -Dspring.config.additional-location=$SAC_INSTALL_DIR_PATH/conf/sac-config/properties/application-common.yml -Dsac.install-file-path=$SAC_INSTALL_FILE_PATH -jar $SAC_ADMIN_UPGRADE_JAR_PATH $args"
+}
+
+get_sac_install_info() {
+    sac_install_info_file_list=()
+
+    # When using the root user, check the sequoiasac file in the /etc/default directory
+    if [ -d "/etc/default" ]; then
+        for file in /etc/default/sequoiasac*; do
+            if [ -f "$file" ]; then
+                sac_install_info_file_list+=("$file")
+            fi
+        done
+    fi
+
+    user_home_path="$HOME"
+
+    # When using a non-root user, check the .sequoiasac file in the user's home directory
+    if [ -d "$user_home_path" ]; then
+        for file in "$user_home_path"/.sequoiasac*; do
+            if [ -f "$file" ]; then
+                sac_install_info_file_list+=("$file")
+            fi
+        done
+    fi
+
+    if [ ${#sac_install_info_file_list[@]} -eq 0 ]; then
+        echo "No SequoiaSAC install info found from /etc/default and $user_home_path"
+        exit 1
+    fi
+
+    # If multiple installation information files are found, prompt the user to choose
+    if [ ${#sac_install_info_file_list[@]} -gt 1 ]; then
+        echo "Multiple SequoiaSAC install info found:"
+        for i in "${!sac_install_info_file_list[@]}"; do
+            version=$(get_value_from_file "VERSION" "${sac_install_info_file_list[$i]}")
+            install_dir=$(get_value_from_file "INSTALL_DIR" "${sac_install_info_file_list[$i]}")
+            echo "[$((i+1))] $version $install_dir"
+        done
+        echo -n "Please choose one to upgrade: "
+        read -r selected
+        while ! [[ "$selected" =~ ^[0-9]+$ ]] || [ "$selected" -lt 1 ] || [ "$selected" -gt ${#sac_install_info_file_list[@]} ]; do
+            echo -n "Invalid selected number, try again: "
+            read -r selected
+        done
+        SAC_INSTALL_FILE_PATH="${sac_install_info_file_list[$((selected-1))]}"
+    else
+        SAC_INSTALL_FILE_PATH="${sac_install_info_file_list[0]}"
+    fi
+
+    if [ -f "$SAC_INSTALL_FILE_PATH" ]; then
+        SAC_INSTALL_DIR_PATH=$(get_value_from_file "INSTALL_DIR" "$SAC_INSTALL_FILE_PATH")
+    else
+        echo "Selected SequoiaSAC install file does not exist: $SAC_INSTALL_FILE_PATH"
+    fi
+}
+
+get_value_from_file() {
+    local key=$1
+    local file=$2
+    grep "^${key}=" "$file" | cut -d'=' -f2
+}
+
+ARGS=`getopt -o c:f:hk:lu:p:i:t: --long config:,force:,help,keepdata:,killservice:,list,user:,passwd:,cipher-file:,sac-user:,sac-passwd:,interval:,times:,ssh-user:,ssh-passwd:,ssh-port:,key-file:,sac-version-upgrade-rule-file:,agent-version-upgrade-rule-file: -- "$@"`
+ret=$?
+test $ret -ne 0 && exit $ret
+
+#get path
+current_path=$(pwd)
+dir_name=`dirname $0`
+if [[ ${dir_name:0:1} != "/" ]]; then
+  SAC_ADMIN_BIN_PATH=$(pwd)/$dir_name
+else
+  SAC_ADMIN_BIN_PATH=$dir_name
+fi
+
+cd $SAC_ADMIN_BIN_PATH/../ && SAC_ADMIN_INSTALL_PATH=`pwd`
+
+SAC_ADMIN_FORCE=false
+SAC_ADMIN_KEEP_DATA=true
+SAC_ADMIN_INTERVAL=10
+SAC_ADMIN_TIMES=1
+SAC_ADMIN_DEPLOY_SAC_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/deploy.yml
+SAC_ADMIN_GET_AGENT_METRIC_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/serverlist.yml
+SAC_ADMIN_DISCOVER_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/discover.yml
+SAC_ADMIN_DISCOVER_DDS_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/discover-dds.yml
+SAC_ADMIN_SSHTRUST_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/sshtrust.yml
+SAC_ADMIN_SAC_TOOL_JAR_PATH=$SAC_ADMIN_INSTALL_PATH/tools/deployment/sac-deploy-tool.jar
+SAC_ADMIN_SDB_SSH_JAR_PATH=$SAC_ADMIN_INSTALL_PATH/tools/ssh/sdb-ssh-tool.jar
+SAC_ADMIN_UPGRADE_JAR_PATH=$SAC_ADMIN_INSTALL_PATH/tools/upgrade/sac-upgrade-tool.jar
+DEFAULT_JVM_OPTS="-Dsac.dir=$SAC_ADMIN_INSTALL_PATH -Duser.dir=$SAC_ADMIN_INSTALL_PATH -Dfile.encoding=utf-8"
+SAC_INSTALL_FILE_PATH=""
+SAC_INSTALL_DIR_PATH=""
+
+test $# -eq 0 && { help && exit -1; }
+eval set -- "${ARGS}"
+
+
+while true
+do
+  case "$1" in
+    -l | --list)                            SAC_ADMIN_LIST=true
+                                            help
+                                            exit 0
+                                            ;;
+    -c | --config)                          SAC_ADMIN_CONF_PATH=$2
+                                            if [[ "$SAC_ADMIN_CONF_PATH" != /* ]]; then
+                                              SAC_ADMIN_CONF_PATH="$current_path/$SAC_ADMIN_CONF_PATH"
+                                            fi
+                                            shift 2
+                                            ;;
+    -f | --force)                           SAC_ADMIN_FORCE=$2
+                                            shift 2
+                                            ;;
+    -k | --keepdata)                        SAC_ADMIN_KEEP_DATA=$2
+                                            shift 2
+                                            ;;
+    --killservice)                          SAC_ADMIN_KILL_SERVICE=$2
+                                            shift 2
+                                            ;;
+    -u | --user)                            SAC_ADMIN_USER=$2
+                                            shift 2
+                                            ;;
+    -p | --passwd)                          SAC_ADMIN_PASSWD=$2
+                                            shift 2
+                                            ;;
+    -i | --interval)                        SAC_ADMIN_INTERVAL=$2
+                                            shift 2
+                                            ;;
+    -t | --times)                           SAC_ADMIN_TIMES=$2
+                                            shift 2
+                                            ;;
+    --sac-user)                             SAC_ADMIN_SAC_USER=$2
+                                            shift 2
+                                            ;;
+    --sac-passwd)                           SAC_ADMIN_SAC_PASSWD=$2
+                                            shift 2
+                                            ;;
+    --ssh-port)                             SAC_ADMIN_SSH_PORT=$2
+                                            shift 2
+                                            ;;
+    --ssh-user)                             SAC_ADMIN_SSH_USER=$2
+                                            shift 2
+                                            ;;
+    --ssh-passwd)                           SAC_ADMIN_SSH_PASSWD=$2
+                                            shift 2
+                                            ;;
+    --key-file)                             SAC_ADMIN_KEY_FILE=$2
+                                            shift 2
+                                            ;;
+    --sac-version-upgrade-rule-file)        SAC_VERSION_UPGRADE_RULE_FILE=$2
+                                            shift 2
+                                            ;;
+    --agent-version-upgrade-rule-file)      AGENT_VERSION_UPGRADE_RULE_FILE=$2
+                                            shift 2
+                                            ;;
+    -h | --help )                           SAC_PRINT_HELP=true
+                                            shift
+                                            ;;
+    --)                                     shift
+                                            break
+                                            ;;
+    *)                                      echo "ERROR: Internal error!"
+                                            exit 64
+                                            ;;
+  esac
+done
+
+case "$1" in
+  deploysac)          mode=$1; shift 1;;
+
+  dropsac)            mode=$1; shift 1;;
+
+  dropddsbackupagent) mode=$1; shift 1;;
+
+  getagentmetric)     mode=$1; shift 1;;
+
+  discover)           mode=$1; shift 1;;
+
+  discoverdds)        mode=$1; shift 1;;
+
+  encrypt)            mode=$1; shift 1;;
+
+  createtrust)        mode=$1; shift 1;;
+
+  checktrust)         mode=$1; shift 1;;
+
+  upgrade)            mode=$1; shift 1;;
+
+  *)                  if [[ $SAC_PRINT_HELP == true ]]; then
+                        help
+                        exit 0
+                      else
+                        echo "ERROR: sac_admin: unrecognized operation mode \"$1\"" >&2
+                        echo "Try './sac_admin --help' for more information."
+                        exit 64
+                      fi
+esac
+
+if [ "$*" != "" ]; then
+  echo "ERROR: sac_admin: too many arguments: $*" >&2
+  echo "Try './sac_admin --help' for more information."
+  exit 64
+fi
+
+# check user
+check_user $mode
+
+# check installed jdk
+check_jdk
+
+check_log_path_permission
+
+case $mode in
+  deploysac)          deploysac          ;;
+  dropsac)            dropsac            ;;
+  dropddsbackupagent) dropddsbackupagent ;;
+  getagentmetric)     getagentmetric     ;;
+  discover)           discover           ;;
+  discoverdds)        discoverdds        ;;
+  encrypt)            encrypt            ;;
+  createtrust)        createtrust        ;;
+  checktrust)         checktrust         ;;
+  upgrade)            upgrade            ;;
+esac
+
+exit 0
+

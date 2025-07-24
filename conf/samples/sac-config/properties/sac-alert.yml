@@ -1,0 +1,20 @@
+spring:
+  # 公共配置文件
+  profiles:
+    include: common
+
+# SAC
+sac:
+  alert:
+    # 重复发送的延迟时间，默认 5 分钟
+    resendDelaySeconds: 300
+    
+message:
+  push:
+    socketTimeoutMs: 10000
+    connectTimeoutMs: 10000
+    retryTimes: 3
+    expressionCacheSize: 100
+    pushTestTimeoutMin: 3
+    maxPushThreadPoolSize: 10
+    pushQueueCapacity: 1000

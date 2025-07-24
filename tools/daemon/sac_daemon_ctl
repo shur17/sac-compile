@@ -1,0 +1,303 @@
+#!/bin/bash
+
+#   exit code list:
+#   0     successful termination
+#   1     unsuccessful termination
+#   3     sac-daemon is running
+#   4     sac-daemon is not running
+#   64    command line usage error
+#   77    permission denied
+
+SAC_DAEMON_TEMP_PID=-1
+
+# check user
+# if neither root nor sac user, exit with PERMISSION_DENIED
+function check_user()
+{
+  local mode=$1
+  SAC_USER=`ls -l $SAC_PATH/tools/daemon/sac_daemon_ctl | awk '{print $3}'`
+
+  local cur_user=`whoami`
+  if [ "$cur_user" != "$SAC_USER" -a "$cur_user" != "root" ]
+  then
+    echo "ERROR: './sac_daemon_ctl $mode' requires [$SAC_USER] permission" >&2
+    exit 77
+  fi
+}
+
+# if root: change to sac user to execute command
+# if sac user: execute command
+function exec_cmd()
+{
+   local cmd="$1"
+   local cur_user=`whoami`
+
+   if [ $cur_user == "root" ]
+   then
+      su - $SAC_USER -c "${cmd}" > /dev/null 2>&1
+      return $?
+   else
+      eval "${cmd}" > /dev/null 2>&1
+      return $?
+   fi
+}
+
+# print log
+function print_log()
+{
+  local log_level=$1
+  local log=$2
+  local date=`date "+%Y-%m-%d %H:%M:%S"`
+  echo "$date $log_level: $log"
+}
+
+# check if an given item is in the given list
+# $1: the given list
+# $2: the given item
+function contains()
+{
+  for item in $1
+  do
+    if [ $2 == $item ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# check current user if has permission to execute the install/uninstall command
+# return 0: root, 1: no permission, 5: sudo permission
+function check_permission()
+{
+  local current_user=$(whoami)
+  if [ "$current_user" != "root" ]; then
+    local sudoers=`getent group sudo | cut -d: -f4`
+    contains "$sudoers" "$current_user"
+    local ret=$?
+    test $ret -eq 0 && return 5
+    test $ret -eq 1 && return 1
+  else
+    return 0
+  fi
+}
+
+# print help message
+function help()
+{
+  echo "sac_daemon_ctl is a utility to start or stop the SAC daemon."
+  echo ""
+  echo "Usage: "
+  echo "  sac_daemon_ctl start                             start sac-daemon"
+  echo "  sac_daemon_ctl stop                              stop sac-daemon"
+  echo "  sac_daemon_ctl status                            show sac-daemon status"
+  echo "  sac_daemon_ctl list                              list services that protected by sac-daemon"
+  echo ""
+  echo "Options:"
+  echo "  -h, --help             output help message, then exit"
+
+  exit 0
+}
+
+# check if sac-daemon exist
+function check_daemon_exist()
+{
+  local exist=false
+
+  if [[ -f "$SAC_DAEMON_PID_FILE" ]]; then
+    local pid=`cat "$SAC_DAEMON_PID_FILE"`
+    ps --pid $pid >> /dev/null 2>&1
+    test $? -eq 0 && exist=true && SAC_DAEMON_TEMP_PID=$pid
+  fi
+
+  test true == $exist  && return 0
+  test false == $exist && return 1
+}
+
+# show sac-daemon status
+function status()
+{
+  check_daemon_exist
+  if [ $? -eq 0 ]; then
+    print_log "INFO" "sac-daemon (PID: $SAC_DAEMON_TEMP_PID) is running."
+    return 0
+  else
+    print_log "INFO" "sac-daemon is not running."
+    return 1
+  fi
+}
+
+# get all services
+function get_all_services()
+{
+  SAC_DAEMON_SERVICES=`$SAC_PATH/bin/sac_ctl list | grep -v "NAME" | grep -v "Total:" | awk '{print $1 }'`
+}
+
+# list services that protected by sac-daemon
+function list()
+{
+  get_all_services
+
+  printf "%-25s\n" "NAME"
+
+  if [[ ! -d $SAC_PATH/conf ]]; then
+    printf "Total: 0\n"
+    return 0
+  fi
+
+  local total_cnt=0
+  for service_name in `ls -a $SAC_PATH/conf`
+  do
+    if [[ ! $service_name =~ pid ]]; then
+      continue
+    fi
+    # .service_name.pid -> .service_name
+    service_name=${service_name%.*}
+    # .service_name -> service_name
+    service_name=${service_name#*.}
+    contains "$SAC_DAEMON_SERVICES" "$service_name"
+    test $? -eq 1 && continue
+    printf "%-25s\n" $service_name
+    total_cnt=$(($total_cnt+1))
+  done
+
+  printf "Total: %s\n" $total_cnt
+
+}
+
+function start()
+{
+  print_log "INFO" "Starting sac-daemon ..."
+
+  # check if sac-daemon is started
+  check_daemon_exist
+  if [ $? -eq 0 ]; then
+    print_log "ERROR" "sac-daemon (PID: $SAC_DAEMON_TEMP_PID) has been already started."
+    exit 3
+  fi
+
+  test -d $SAC_DAEMON_INSTALL_PATH/logs || mkdir $SAC_DAEMON_INSTALL_PATH/logs
+  exec_cmd "nohup bash $SAC_PATH/tools/daemon/sac_daemon >> $SAC_LOG_PATH/sac-daemon.log 2>&1 &"
+
+  sleep 1
+
+  check_daemon_exist >> /dev/null 2>&1
+
+  local ret=$?
+  test $ret -eq 0 && print_log "SUCCESS" "sac-daemon is successfully started (PID: $SAC_DAEMON_TEMP_PID)"
+  test $ret -eq 1 && print_log "ERROR" "Fail to start sac-daemon, please verify log in $SAC_LOG_PATH/sac-daemon.log"
+
+}
+
+function stop()
+{
+  print_log "INFO" "Stopping daemon ..."
+
+  # check if sac-daemon exist
+  check_daemon_exist
+  if [ $? -eq 1 ]; then
+    print_log "ERROR" "sac-daemon is not running."
+    exit 4
+  fi
+
+  # stop daemon
+  local pid=`cat "$SAC_DAEMON_PID_FILE"`
+  exec_cmd "kill -15 $pid"
+
+  sleep 1
+
+  # delete pid file (only if the process does not exist)
+  ps --pid $pid >> /dev/null 2>&1
+  local ret=$?
+  test $ret -eq 0 &&
+    print_log "ERROR" "Failed to stop sac-daemon." &&
+    return 1
+
+  test $ret -ne 0 &&
+    exec_cmd "rm -f $SAC_DAEMON_PID_FILE" &&
+    print_log "SUCCESS" "Success to stop sac-daemon." &&
+    return 0
+
+}
+
+test $# -eq 0 && { help && exit -1; }
+
+ARGS=`getopt -o hs --long help,system -- "$@"`
+ret=$?
+test $ret -ne 0 && exit $ret
+
+#get path
+dir_name=`dirname $0`
+if [[ ${dir_name:0:1} != "/" ]]; then
+  SAC_DAEMON_BIN_PATH=$(pwd)/$dir_name
+else
+  SAC_DAEMON_BIN_PATH=$dir_name
+fi
+
+cd $SAC_DAEMON_BIN_PATH/../ && SAC_DAEMON_INSTALL_PATH=`pwd`
+
+cd $SAC_DAEMON_INSTALL_PATH/../ && SAC_PATH=`pwd`
+SAC_DAEMON_PID_FILE=$SAC_PATH/conf/.sac-daemon.pid
+
+SAC_LOCK_FILE=$SAC_PATH/conf/.deploy.lock
+SAC_LOG_PATH=$SAC_PATH
+if [[ -f $SAC_LOCK_FILE ]]; then
+  . $SAC_LOCK_FILE
+  test -z $SAC_LOG_PATH && SAC_LOG_PATH=$SAC_PATH
+  if [[ $SAC_LOG_PATH != *"/logs" && $SAC_LOG_PATH != *"logs/" ]]; then
+    if [[ $SAC_LOG_PATH == *"/" ]]; then
+      SAC_LOG_PATH=$SAC_LOG_PATH"logs"
+    else
+      SAC_LOG_PATH=$SAC_LOG_PATH/logs
+    fi
+  fi
+fi
+
+eval set -- "${ARGS}"
+
+while true
+do
+  case "$1" in
+    -h | --help )                           help
+                                            exit 0
+                                            ;;
+    --)                                     shift
+                                            break
+                                            ;;
+    *)                                      echo "ERROR: Internal error!"
+                                            exit 64
+                                            ;;
+  esac
+done
+
+case "$1" in
+  list)          SAC_DAEMON_MODE=$1; shift 1;;
+
+  status)        SAC_DAEMON_MODE=$1; shift 1;;
+
+  start)         SAC_DAEMON_MODE=$1; shift 1;;
+
+  stop)          SAC_DAEMON_MODE=$1; shift 1;;
+
+  *)             echo "ERROR" "sac_daemon_ctl: unrecognized operation mode \"$1\"" >&2
+                 echo "Try 'sac_daemon_ctl --help' for more information."
+                 exit 64
+                 ;;
+esac
+
+if [ "$*" != "" ]; then
+  echo "ERROR: sac_daemon_ctl: too many arguments: $*" >&2
+  echo "Try 'sac_daemon_ctl --help' for more information."
+  exit 64
+fi
+
+# check user
+check_user $SAC_DAEMON_MODE
+
+case $SAC_DAEMON_MODE in
+  start)          start                  ;;
+  stop)           stop                   ;;
+  status)         status || exit $?      ;;
+  list)           list                   ;;
+esac
+
+exit 0
