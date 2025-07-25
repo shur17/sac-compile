@@ -155,6 +155,8 @@ function rm_dir()
 
   rm -rf $path/src/server/*/shared-lib
 
+  rm -rf $path/src/web/node_modules
+
 }
 
 # create directory before compiling
@@ -255,6 +257,9 @@ function compile_backend()
   # lib
   cd $path/src/server
 
+  # check alert config file
+  python $path/dev/script/check_alert_config_files.py
+
   # get the first line of $path/VERSION.info to get the sac version
   version_info=$(head -n +1 $path/VERSION.info)
   sac_version=${version_info##*" "}
@@ -276,7 +281,7 @@ function compile_backend()
     exit 1
   fi
 
-  jars=`find $path/src/server -name sac*.jar -not -path "*/test/*" -not -path "*/sac-statistical/*" -not -path "*/sac-common/*" -not -path "*/sac-agent-common/*" -not -path "*/sac-agent-plugin/*" -not -path "*/sac-audit-*/*" -not -path "*/sac-task-manager/*" -not -path "*/sac-dms/*" -not -path "*/shared-lib/*"`
+  jars=`find $path/src/server -name sac*.jar -not -path "*/sac-common/*" -not -path "*/shared-lib/*"`
   cd $path
   # 声明关联数组统计文件出现次数
   declare -A file_counts

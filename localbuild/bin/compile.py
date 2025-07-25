@@ -13,7 +13,7 @@ from common import CommonDefine
 log = get_logger()
 
 BUILD_RUN_GIT_URL = "http://gitlab.sequoiadb.com/sequoiadb/build_run.git"
-SAC_GIT_URL = "http://gitlab.sequoiadb.com/sequoiadb/sac.git"
+SAC_COMPILE_GIT_URL = "http://gitlab.sequoiadb.com/sequoiadb/sac-compile.git"
 SAC_BUILD_SCRIPT_PATH = os.path.join(CommonDefine.SAC_PRO_DIR, "build.sh")
 SAC_BUILD_OUTPUT_DIR = os.path.join(CommonDefine.SAC_PRO_DIR, "build")
 BUILD_RUN_DIR = os.path.join(SAC_BUILD_OUTPUT_DIR, "build_run")
@@ -62,7 +62,7 @@ def exec_compile():
     sac_tar_file_path = glob.glob(os.path.join(SAC_BUILD_OUTPUT_DIR, "sac-*-release.tar.gz"))
     if len(sac_tar_file_path) == 0 or len(sac_tar_file_path) > 1:
         raise Exception("Missing sac release tar file or more than one")
-    cmd = 'bash -c "cd {}; ./callbuildpackage.sh -t {} -u {}"'.format(BUILD_RUN_DIR, sac_tar_file_path[0], SAC_GIT_URL)
+    cmd = 'bash -c "cd {}; ./callbuildpackage.sh -t {} -u {}"'.format(BUILD_RUN_DIR, sac_tar_file_path[0], SAC_COMPILE_GIT_URL)
     subprocess.call(cmd, shell=True)
 
     # 4. 将编译产物拷贝到指定目录
