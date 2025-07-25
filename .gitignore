@@ -1,5 +1,3 @@
-*.pyc
-*.iml
 .idea/
 .project
 .classpath
@@ -9,3 +7,4 @@ target/
 /localbuild/workdir/
 sac-auto-testcase
 shared-lib/
+/src
