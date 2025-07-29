@@ -95,8 +95,6 @@ function help()
   echo ""
   echo "  sac_admin getagentmetric [-i | --interval INTERVAL] [-t | --times TIMES] [-c | --config CONFIG] [--sac-user SAC_USER] [--sac-passwd SAC_PASSWD]"
   echo ""
-  echo "  sac_admin discover [-c | --config CONFIG] [--sac-user SAC_USER] [--sac-passwd SAC_PASSWD]"
-  echo "  sac_admin discoverdds [-c | --config CONFIG] [--sac-user SAC_USER] [--sac-passwd SAC_PASSWD]"
   echo ""
   echo "  sac_admin dropddsbackupagent <-c | --config CONFIG> [--sac-user SAC_USER] [--sac-passwd SAC_PASSWD]"
   echo ""
@@ -114,8 +112,6 @@ function help()
   echo "                         deploysac will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/deploy.yml"
   echo "                         dropddsbackupagent will use the configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/serverlist.yml, please manually specify the config file using the <-c | --config> option"
   echo "                         getagentmetric will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/serverlist.yml"
-  echo "                         discover will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/discover.yml"
-  echo "                         discoverdds will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/discover-dds.yml"
   echo "                         createtrust and checktrust will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/sshtrust.yml"
   echo "  -f, --force            whether to reinitialize SAC database when deploy SAC or force uninstallation when drop SAC, default value is false"
   echo "  -k, --keepdata         whether to keep SAC database when drop SAC, default value is true"
@@ -232,42 +228,6 @@ function getagentmetric()
   test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
   test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
   exec_cmd "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args"
-}
-
-function discover()
-{
-  check_jar_is_exists $SAC_ADMIN_SAC_TOOL_JAR_PATH
-  if [[ $SAC_PRINT_HELP == true ]]; then
-    echo "Usage: discover [options]"
-    echo "  -c, --config           config file path"
-    echo "                         discover will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/discover.yml"
-    echo "  --sac-user             user for logging SAC"
-    echo "  --sac-passwd           password for logging SAC"
-    exit 0
-  fi
-  test -z $SAC_ADMIN_CONF_PATH && SAC_ADMIN_CONF_PATH=$SAC_ADMIN_DISCOVER_CONF_PATH
-  local args="discover -c $SAC_ADMIN_CONF_PATH"
-  test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
-  test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
-  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to discover SequoiaDB cluster\\."
-}
-
-function discoverdds()
-{
-  check_jar_is_exists $SAC_ADMIN_SAC_TOOL_JAR_PATH
-  if [[ $SAC_PRINT_HELP == true ]]; then
-    echo "Usage: discoverdds [options]"
-    echo "  -c, --config           config file path"
-    echo "                         discoverdds will use the default configuration file which is $SAC_ADMIN_INSTALL_PATH/conf/discover-dds.yml"
-    echo "  --sac-user             user for logging SAC"
-    echo "  --sac-passwd           password for logging SAC"
-    exit 0
-  fi
-  test -z $SAC_ADMIN_CONF_PATH && SAC_ADMIN_CONF_PATH=$SAC_ADMIN_DISCOVER_DDS_CONF_PATH
-  local args="discoverdds -c $SAC_ADMIN_CONF_PATH"
-  test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
-  test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
-  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to discover DDS cluster\\."
 }
 
 function encrypt()
@@ -421,8 +381,6 @@ SAC_ADMIN_INTERVAL=10
 SAC_ADMIN_TIMES=1
 SAC_ADMIN_DEPLOY_SAC_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/deploy.yml
 SAC_ADMIN_GET_AGENT_METRIC_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/serverlist.yml
-SAC_ADMIN_DISCOVER_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/discover.yml
-SAC_ADMIN_DISCOVER_DDS_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/discover-dds.yml
 SAC_ADMIN_SSHTRUST_CONF_PATH=$SAC_ADMIN_INSTALL_PATH/conf/sshtrust.yml
 SAC_ADMIN_SAC_TOOL_JAR_PATH=$SAC_ADMIN_INSTALL_PATH/tools/deployment/sac-deploy-tool.jar
 SAC_ADMIN_SDB_SSH_JAR_PATH=$SAC_ADMIN_INSTALL_PATH/tools/ssh/sdb-ssh-tool.jar
@@ -514,10 +472,6 @@ case "$1" in
 
   getagentmetric)     mode=$1; shift 1;;
 
-  discover)           mode=$1; shift 1;;
-
-  discoverdds)        mode=$1; shift 1;;
-
   encrypt)            mode=$1; shift 1;;
 
   createtrust)        mode=$1; shift 1;;
@@ -555,8 +509,6 @@ case $mode in
   dropsac)            dropsac            ;;
   dropddsbackupagent) dropddsbackupagent ;;
   getagentmetric)     getagentmetric     ;;
-  discover)           discover           ;;
-  discoverdds)        discoverdds        ;;
   encrypt)            encrypt            ;;
   createtrust)        createtrust        ;;
   checktrust)         checktrust         ;;

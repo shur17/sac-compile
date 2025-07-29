@@ -454,85 +454,90 @@ def add_server(host, sac_section, business_hosts):
         raise Exception("Failed to add server into sac")
 
 def discover_cluster(host, sac_section):
-    ssh = None
-    try:
-        ssh = SSHConnection(host=host['hostname'], user=host['user'], pwd=host['password'])
-        sac_install_path = sac_section['installPath']
-        # 1. 发现 sdb 集群
-        if os.path.exists(CommonDefine.DSINFO_BUSINESS_DB_SDB):
-            sdb_info = load_yml(CommonDefine.DSINFO_BUSINESS_DB_SDB)['sequoiadb']
-            # 处理多个 sdb 集群的场景，只发现第一个
-            if isinstance(sdb_info, list):
-                sdb_info = sdb_info[0]
-            discover_sdb_yml = generate_discover_yml(sac_section, sdb_info)
-            discover_sdb_yml_remote_path = "{}/conf/discover.yml".format(sac_install_path)
-            ssh.write_file(discover_sdb_yml_remote_path, yaml.dump(discover_sdb_yml))
-            exec_discover_cmd(ssh, "sdb", sac_install_path, discover_sdb_yml_remote_path)
-        # 2. 发现 dds 集群
-        if os.path.exists(CommonDefine.DSINFO_BUSINESS_DB_DDS):
-            dds_info = load_yml(CommonDefine.DSINFO_BUSINESS_DB_DDS)['dds']
-            if 'replicaMode' in dds_info:
-                discover_dds_yml = generate_discover_dds_yml(sac_section, dds_info['replicaMode'], "replicaMode")
-                discover_dds_yml_remote_path = "{}/conf/discover-dds-repl.yml".format(sac_install_path)
-                ssh.write_file(discover_dds_yml_remote_path, yaml.dump(discover_dds_yml))
-                exec_discover_cmd(ssh, "dds", sac_install_path, discover_dds_yml_remote_path)
-            if 'shardMode' in dds_info:
-                discover_dds_yml = generate_discover_dds_yml(sac_section, dds_info['shardMode'], "shardMode")
-                discover_dds_yml_remote_path = "{}/conf/discover-dds-shard.yml".format(sac_install_path)
-                ssh.write_file(discover_dds_yml_remote_path, yaml.dump(discover_dds_yml))
-                exec_discover_cmd(ssh, "dds", sac_install_path, discover_dds_yml_remote_path)
-    finally:
-        if ssh is not None:
-            ssh.close()
+    sac_host = host['hostname']
+    gatewayPort = sac_section['sacServer']['gateway']['port']
+    base_url = sac_host + ":" + str(gatewayPort)
+
+    # 登录 SAC, 获取 token
+    username = "admin"
+    default_pwd_encrypt_with_md5 = Utils.encrypt_with_md5("Admin@1024")
+    token = Utils.login(base_url, username, default_pwd_encrypt_with_md5)
+
+    rsa_pub_key = Utils.get_rsa_pub_key(base_url)
+    # 转换成 PEM 格式
+    pem_pub_key = "-----BEGIN PUBLIC KEY-----\n"
+    pem_pub_key += '\n'.join(textwrap.wrap(rsa_pub_key, 64))
+    pem_pub_key += "\n-----END PUBLIC KEY-----\n"
+    default_pwd_encrypt_with_rsa = Utils.encrypt_with_rsa(pem_pub_key, "Admin@1024")
+
+    # 1. 发现 sdb 集群
+    if os.path.exists(CommonDefine.DSINFO_BUSINESS_DB_SDB):
+        sdb_info = load_yml(CommonDefine.DSINFO_BUSINESS_DB_SDB)['sequoiadb']
+        # 处理多个 sdb 集群的场景，只发现第一个
+        if isinstance(sdb_info, list):
+            sdb_info = sdb_info[0]
+        discover_sdb_params = generate_discover_params(sac_section, sdb_info, pem_pub_key)
+        exec_discover_request(base_url, "sdb", token, discover_sdb_params)
+    # 2. 发现 dds 集群
+    if os.path.exists(CommonDefine.DSINFO_BUSINESS_DB_DDS):
+        dds_info = load_yml(CommonDefine.DSINFO_BUSINESS_DB_DDS)['dds']
+        if 'replicaMode' in dds_info:
+            discover_dds_params = generate_discover_dds_params(sac_section, dds_info['replicaMode'], "replicaMode", pem_pub_key)
+            exec_discover_request(base_url, "dds", token, discover_dds_params)
+        if 'shardMode' in dds_info:
+            discover_dds_params = generate_discover_dds_params(sac_section, dds_info['shardMode'], "shardMode", pem_pub_key)
+            exec_discover_request(base_url, "dds", token, discover_dds_params)
+
+def exec_discover_request(base_url, type, token, discover_cluster_params):
+    tid = Utils.discover_cluster(base_url, type, token, discover_cluster_params)
+
+    # 每5秒查询一次任务进度，直至任务执行完成
+    progress = {}
+    while True:
+        progress = Utils.get_task_progress(base_url, token, tid)
+        status = progress['status']
+        if status == "SUCCESS" or status == "FAILED":
+            break
+        time.sleep(5)
+
+    if progress['status'] != "SUCCESS":
+        raise Exception("Failed to discover cluster, detail: " + progress['detail'])
 
 
-def exec_discover_cmd(ssh, type, sac_install_path, config_file):
-    cmd = "su - sdbadmin -c '{}/bin/sac_admin {} -c {} --sac-user admin --sac-passwd Admin@1024'".format(
-        sac_install_path, "discover" if type == "sdb" else "discoverdds", config_file)
-    ssh.cmd(cmd, True)
+def generate_discover_params(sac_section, sdb_info, pem_pub_key):
 
-
-def generate_discover_yml(sac_section, sdb_info):
-    discover_yml = {
-        "clusterName": "sdb_cluster",
-        "sac": {
-            "gatewayUrl": "{}:{}".format(sac_section['hostname'], sac_section['sacServer']['gateway']['port']),
-            "sslEnabled": False,
-            "skipSqlBelongCheck": False,
-        },
-        "sequoiadb": {
-            "storageEngine": {
-                "coord": "{}:{}".format(sdb_info['coord'][0].get('hostname'), sdb_info['coord'][0].get('service')),
-                "user": sdb_info['user'],
-                "passwd": sdb_info['password']
-            },
-            "sqlInstanceGroups": []
-        }
+    params = {
+        'cluster_name': "sdb_cluster",
+        'coord_address': sdb_info['coord'][0].get('hostname'),
+        'service_name': sdb_info['coord'][0].get('service'),
+        'sdb_username': sdb_info['user'],
+        'sdb_password': Utils.encrypt_with_rsa(pem_pub_key, sdb_info['password']),
+        'sql_instance_groups': []
     }
     if os.path.exists(CommonDefine.DSINFO_BUSINESS_DB_MYSQL):
         mysql_info = load_yml(CommonDefine.DSINFO_BUSINESS_DB_MYSQL)['mysql'][0]
         mysql_node = mysql_info['nodes'][0]
-        discover_yml['sequoiadb']['sqlInstanceGroups'].append({
+        params['sql_instance_groups'].append({
             "user": mysql_info['user'],
-            "passwd": mysql_info['password'],
-            "sqlInstances": [{
+            "password": Utils.encrypt_with_rsa(pem_pub_key, mysql_info['password']),
+            "sql_instances": [{
                 "address": "{}:{}".format(mysql_node['hostname'], mysql_node['port']),
             }]
         })
     if os.path.exists(CommonDefine.DSINFO_BUSINESS_DB_MARIADB):
         mariadb_info = load_yml(CommonDefine.DSINFO_BUSINESS_DB_MARIADB)['mariadb'][0]
         mariadb_node = mariadb_info['nodes'][0]
-        discover_yml['sequoiadb']['sqlInstanceGroups'].append({
+        params['sql_instance_groups'].append({
             "user": mariadb_info['user'],
-            "passwd": mariadb_info['password'],
-            "sqlInstances": [{
+            "password": Utils.encrypt_with_rsa(pem_pub_key, mariadb_info['password']),
+            "sql_instances": [{
                 "address": "{}:{}".format(mariadb_node['hostname'], mariadb_node['port']),
             }]
         })
-    return discover_yml
+    return params
 
 
-def generate_discover_dds_yml(sac_section, dds_info, deploy_mode):
+def generate_discover_dds_params(sac_section, dds_info, deploy_mode, pem_pub_key):
     if deploy_mode == "replicaMode":
         address = dds_info['primary']
     else:
@@ -540,16 +545,10 @@ def generate_discover_dds_yml(sac_section, dds_info, deploy_mode):
         address = "{}:{}".format(router['host'], router['port'])
 
     return {
-        "clusterName": "{}_cluster".format(deploy_mode),
-        "sac": {
-            "gatewayUrl": "{}:{}".format(sac_section['hostname'], sac_section['sacServer']['gateway']['port']),
-            "sslEnabled": False,
-        },
-        "dds": {
-            "address": address,
-            "user": dds_info['auth']['username'],
-            "passwd": dds_info['auth']['password']
-        }
+        "cluster_name": "{}_cluster".format(deploy_mode),
+        "dds_address": address,
+        "dds_username": dds_info['auth']['username'],
+        "dds_password": Utils.encrypt_with_rsa(pem_pub_key, dds_info['auth']['password'])
     }
 
 

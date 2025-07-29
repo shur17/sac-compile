@@ -254,6 +254,36 @@ def add_servers(base_url, token, params):
         if conn is not None:
             conn.close()
 
+def discover_cluster(base_url, type, token, params):
+    conn = None
+    try:
+        conn = httplib.HTTPConnection(base_url)
+        payload = json.dumps(params)
+        headers = {
+            'Content-Type': 'application/json',
+            'Sac-Access-Token': token
+        }
+
+        path = "/api/deploy/discover/" + ("sequoiadb" if type == "sdb" else "sequoiadb_dds")
+        conn.request("POST", path, payload, headers)
+        response = conn.getresponse()
+        raw_resp = response.read()
+
+        try:
+            data = json.loads(raw_resp)
+        except Exception as e:
+            raise Exception("Failed to parse JSON response: {}, raw response: {}".format(
+                e, raw_resp.decode('utf-8', errors='ignore')))
+
+        if data.get('code') != 0:
+            raise Exception("Failed to discover cluster, errorCode: {}, msg: {}, detail: {}".format(
+                data.get('code'), data.get('msg'), data.get('detail')))
+
+        return data['data']['task_id']
+    finally:
+        if conn is not None:
+            conn.close()
+
 def get_task_progress(base_url, token, tid):
     conn = None
     try:
