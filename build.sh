@@ -2,6 +2,7 @@
 
 JDK_REPOSITORY_URL="http://gitlab.sequoiadb.com/sequoiadb/jdk/raw/master/"
 JDK_INSTALL_FILE_NAME="installJDK.sh"
+WEB_NODE_MODULES_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/web-node_modules-6.10.tar.gz"
 
 # SAC 安装目录下的 conf 目录下要保存的文件
 KEEP_CONF_FILES=("samples" "service" "dds-conf-desc" "sdb-conf-desc" "default-alert-metric-config.yml.en" "default-alert-metric-config.yml.zh"
@@ -70,9 +71,42 @@ function check_and_install_necessary_module() {
     fi
 }
 
-function check()
+function check_frontend()
 {
-  echo "Starting check build sac environment ..."
+  echo "Starting check build sac frontend environment ..."
+
+  if [ ! -d $path/src ]; then
+    echo "ERROR: Directory 'src' does not exist."
+    exit 1
+  fi
+  
+  if [ ! -d $path/src/web/node_modules ]; then
+    echo "WARNING: Directory 'src/web/node_modules' does not exist, download from GitHub."
+    local downloadPath="/tmp/sequoiasac/download"
+    mkdir -p $downloadPath
+    wget -nc -O $downloadPath/node_modules-6.10.tar.gz "${WEB_NODE_MODULES_URL}" > /dev/null 2>&1
+    tar -xzvf $downloadPath/node_modules-6.10.tar.gz -C $path/src/web > /dev/null 2>&1
+    echo "INFO: 'src/web/node_modules' download complete."
+  fi
+
+  # check if nodejs installed
+  if [[ ! `command -v node` ]]; then
+    echo "ERROR: Node.js not installed detected."
+    exit 1
+  fi
+
+  # check if NPM installed
+  if [[ ! `command -v npm` ]]; then
+    echo "ERROR: NPM not installed detected."
+    exit 1
+  fi
+
+  echo "Success: success to check build sac frontend environment"
+}
+
+function check_backend()
+{
+  echo "Starting check build sac backend environment ..."
 
   if [ ! -d $path/src ]; then
     echo "ERROR: Directory 'src' does not exist."
@@ -108,12 +142,6 @@ function check()
     exit 1
   fi
 
-  # check if NPM installed
-  if [[ ! `command -v npm` ]]; then
-    echo "ERROR: NPM not installed detected."
-    exit 1
-  fi
-
   # check if Python installed
   if [[ ! `command -v python` ]]; then
     echo "ERROR: Python not installed detected."
@@ -127,7 +155,13 @@ function check()
     fi
   fi
 
-  echo "Success: success to check build sac environment"
+  echo "Success: success to check build sac backend environment"
+}
+
+function check()
+{
+  check_frontend
+  check_backend
 }
 
 function array_contains()
@@ -150,13 +184,9 @@ function array_contains()
 # remove directory before compiling
 function rm_dir()
 {
-
   test -d $SAC_BUILD_PATH && cd $SAC_BUILD_PATH && rm -rf `ls | grep -v "packages"`
 
   rm -rf $path/src/server/*/shared-lib
-
-  rm -rf $path/src/web/node_modules
-
 }
 
 # create directory before compiling
@@ -409,11 +439,10 @@ function compile_backend()
 # compile frontend
 function compile_frontend()
 {
-  test -d $path/src/web/node_modules || cp -R $path/thirdparty/web/node_modules $path/src/web/node_modules
   cd $path/src/web
-  chmod u+x ./node_modules/.bin/*
-  chmod u+x ./node_modules/@esbuild/linux-x64/bin/*
-  chmod u+x ./node_modules/@esbuild/linux-arm64/bin/*
+  chmod u+x $path/src/web/node_modules/.bin/*
+  chmod u+x $path/src/web/node_modules/@esbuild/linux-x64/bin/*
+  chmod u+x $path/src/web/node_modules/@esbuild/linux-arm64/bin/*
   npm run build
   local ret=$?
   if [[ $ret != 0 ]];
@@ -428,8 +457,14 @@ function compile_frontend()
 
 function compile()
 {
-
-  check
+  if [[ $scope =~ "frontend" ]]; then
+    check_frontend
+  elif [[ $scope =~ "backend" ]]; then
+    check_backend
+  else
+    check
+  fi
+  
   clean
   rm_dir
   mk_dir
