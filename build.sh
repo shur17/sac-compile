@@ -2,7 +2,10 @@
 
 JDK_REPOSITORY_URL="http://gitlab.sequoiadb.com/sequoiadb/jdk/raw/master/"
 JDK_INSTALL_FILE_NAME="installJDK.sh"
+
+DOWNLOAD_PATH="/tmp/sequoiasac/download"
 WEB_NODE_MODULES_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/web-node_modules-6.10.tar.gz"
+DDS_BACKUP_AGENT_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/dds-backup-agent_1.4.1.tar.gz"
 
 # SAC 安装目录下的 conf 目录下要保存的文件
 KEEP_CONF_FILES=("samples" "service" "dds-conf-desc" "sdb-conf-desc" "default-alert-metric-config.yml.en" "default-alert-metric-config.yml.zh"
@@ -82,16 +85,15 @@ function check_frontend()
   
   if [ ! -d $path/src/web/node_modules ]; then
     echo "WARNING: Directory 'src/web/node_modules' does not exist, download from GitHub."
-    local downloadPath="/tmp/sequoiasac/download"
-    local downloadFile="${downloadPath}/node_modules-6.10.tar.gz"
+    local downloadFile="${DOWNLOAD_PATH}/node_modules-6.10.tar.gz"
     if [ -e $downloadFile ]; then
       echo "INFO: ${downloadFile} is exist."
     else
-      mkdir -p $downloadPath
+      mkdir -p $DOWNLOAD_PATH
       wget -nc -O $downloadFile "${WEB_NODE_MODULES_URL}" > /dev/null 2>&1
       echo "INFO: 'src/web/node_modules' download complete."
     fi
-    tar -xzvf $downloadFile -C $path/src/web > /dev/null 2>&1
+    tar --no-same-owner -xzvf $downloadFile -C $path/src/web > /dev/null 2>&1
     echo "INFO: 'src/web/node_modules' install complete."
   fi
 
@@ -396,10 +398,10 @@ function compile_backend()
   cp -f $path/src/tools/sac-upgrade-tool/target/sac-upgrade-tool.jar $SAC_BUILD_PATH/sac/tools/upgrade/sac-upgrade-tool.jar
 
   # compile sdb-dds-cc_<version>.tar.gz 解压到 tools/deployment/sdb-dds-cc/sdb-dds-cc
-  tar -xzf "$path/tools/dds-cc/sdb-dds-cc_"*.tar.gz -C "$SAC_BUILD_PATH/sac/tools/deployment/sdb-dds-cc" --strip-components=1
+  tar --no-same-owner -xzf "$path/tools/dds-cc/sdb-dds-cc_"*.tar.gz -C "$SAC_BUILD_PATH/sac/tools/deployment/sdb-dds-cc" --strip-components=1
 
   # compile m2s_v2.0.0.tar.gz 解压到 tools/maintain/m2s
-  tar -xzf "$path/tools/m2s/m2s_"*.tar.gz -C "$SAC_BUILD_PATH/sac/tools/maintain/m2s" --strip-components=1
+  tar --no-same-owner -xzf "$path/tools/m2s/m2s_"*.tar.gz -C "$SAC_BUILD_PATH/sac/tools/maintain/m2s" --strip-components=1
 
   # backup
   cp -rf $path/tools/backup/* $SAC_BUILD_PATH/sac/tools/backup
@@ -426,20 +428,13 @@ function compile_backend()
   test -d $path/agent/sac-agent/conf/samples && cp $path/agent/sac-agent/conf/samples/* $SAC_BUILD_PATH/sac/agent/sac-agent/conf
 
   # dds-backup-agent
-  local backup_agent_version_prefix="Backup Agent version"
-  local backup_agent_name_prefix="Backup Agent name"
-  local backup_agent_version=`grep "$backup_agent_version_prefix" $path/BACKUP_AGENT_NAME.info | sed "s/$backup_agent_version_prefix: //"`
-  local backup_agent_name=`grep "$backup_agent_name_prefix" $path/BACKUP_AGENT_NAME.info | sed "s/$backup_agent_name_prefix: //"`
-  python $path/dev/script/fetch_package.py --search-base-dir="/data/share_new/7.版本归档_NEW/SequoiaMisc/dds_backup_agent" --version=$backup_agent_version --name=$backup_agent_name --download-dir=$SAC_BUILD_PACKAGES_PATH
-  ret=$?
-  if [[ $ret != 0 ]]; then
-    echo "ERROR: Failed to fetch dds backup agent package, name: $backup_agent_name, download_dir: $SAC_BUILD_PACKAGES_PATH"
-    exit 1
-  fi
+  local tmpBackupAgentFile="${DOWNLOAD_PATH}/dds-backup-agent_1.4.1.tar.gz"
+  mkdir -p $DOWNLOAD_PATH
+  wget -nc -O $tmpBackupAgentFile "${DDS_BACKUP_AGENT_URL}" > /dev/null 2>&1
+  echo "INFO: 'dds_backup_agent' download complete."
 
-  tar -zxvf $SAC_BUILD_PACKAGES_PATH/$backup_agent_name -C $SAC_BUILD_PATH/sac/agent
+  tar --no-same-owner -zxvf $tmpBackupAgentFile -C $SAC_BUILD_PATH/sac/agent
   mv $SAC_BUILD_PATH/sac/agent/dds-backup-agent_* $SAC_BUILD_PATH/sac/agent/dds-backup-agent
-
 }
 
 # compile frontend
