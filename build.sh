@@ -83,10 +83,16 @@ function check_frontend()
   if [ ! -d $path/src/web/node_modules ]; then
     echo "WARNING: Directory 'src/web/node_modules' does not exist, download from GitHub."
     local downloadPath="/tmp/sequoiasac/download"
-    mkdir -p $downloadPath
-    wget -nc -O $downloadPath/node_modules-6.10.tar.gz "${WEB_NODE_MODULES_URL}" > /dev/null 2>&1
-    tar -xzvf $downloadPath/node_modules-6.10.tar.gz -C $path/src/web > /dev/null 2>&1
-    echo "INFO: 'src/web/node_modules' download complete."
+    local downloadFile="${downloadPath}/node_modules-6.10.tar.gz"
+    if [ -e $downloadFile ]; then
+      echo "INFO: ${downloadFile} is exist."
+    else
+      mkdir -p $downloadPath
+      wget -nc -O $downloadFile "${WEB_NODE_MODULES_URL}" > /dev/null 2>&1
+      echo "INFO: 'src/web/node_modules' download complete."
+    fi
+    tar -xzvf $downloadFile -C $path/src/web > /dev/null 2>&1
+    echo "INFO: 'src/web/node_modules' install complete."
   fi
 
   # check if nodejs installed
