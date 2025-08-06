@@ -1,7 +1,8 @@
 #!/bin/bash
 
-JDK_REPOSITORY_URL="http://gitlab.sequoiadb.com/sequoiadb/jdk/raw/master/"
-JDK_INSTALL_FILE_NAME="installJDK.sh"
+JDK_DOWNLOAD_BASE_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/openJDK%2Fv1.8/"
+JDK_X86_64_FILE_NAME="OpenJDK8U-jdk_x64_linux_8u292b10.tar.gz"
+JDK_AARCH64_FILE_NAME="OpenJDK8U-jdk_aarch64_linux_8u292b10.tar.gz"
 
 DOWNLOAD_PATH="/tmp/sequoiasac/download"
 WEB_NODE_MODULES_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/web-node_modules-6.10.tar.gz"
@@ -122,27 +123,7 @@ function check_backend()
   fi
 
   # install default JDK
-  if [[ ! -f $LOCAL_JDK_URL_INFO_FILE_PATH || ! -f $LOCAL_JDK_INSTALL_FILE_PATH || ! -d $LOCAL_JDK_INSTALL_DIR ]]; then
-    echo "install default JDK from ${JDK_REPOSITORY_URL} ..."
-    test -d $SAC_BUILD_PACKAGES_PATH || mkdir -p $SAC_BUILD_PACKAGES_PATH
-    cd $SAC_BUILD_PACKAGES_PATH
-    wget -nc "${JDK_REPOSITORY_URL}${JDK_INSTALL_FILE_NAME}" > /dev/null 2>&1
-    local ret=$?
-    if [ $ret -ne 0 ]; then
-      echo "ERROR: Failed to download ${JDK_INSTALL_FILE_NAME} from ${JDK_REPOSITORY_URL}, error code: $ret"
-      exit $ret
-    fi
-    test -x ${JDK_INSTALL_FILE_NAME} || chmod u+x ${JDK_INSTALL_FILE_NAME}
-    . ./${JDK_INSTALL_FILE_NAME}
-    if [ $? -ne 0 ]; then
-      echo "ERROR: Failed to execute shell ${JDK_INSTALL_FILE_NAME}"
-      exit $ret
-    fi
-  else
-    cd $SAC_BUILD_PACKAGES_PATH
-    test -x ${JDK_INSTALL_FILE_NAME} || chmod u+x ${JDK_INSTALL_FILE_NAME}
-    . ./${JDK_INSTALL_FILE_NAME}
-  fi
+  install_jdk
 
   # check if Maven installed
   if [[ ! `command -v mvn` ]]; then
@@ -170,6 +151,118 @@ function check()
 {
   check_frontend
   check_backend
+}
+
+function install_jdk() {
+  # Only download & unpack if any directory or java binary is missing
+  if [[ ! -d "$JDK_X86_64_INSTALL_DIR" || ! -f "$JDK_X86_64_INSTALL_DIR/bin/java" \
+     || ! -d "$JDK_AARCH64_INSTALL_DIR" || ! -f "$JDK_AARCH64_INSTALL_DIR/bin/java" ]]; then
+
+    test -d $DOWNLOAD_PATH || mkdir -p $DOWNLOAD_PATH
+
+    echo "Downloading x86_64 JDK: $JDK_X86_64_FILE_NAME"
+    download_jdk "$JDK_X86_64_INSTALL_DIR" "$JDK_X86_64_FILE_NAME" \
+      || exit $?
+
+    echo "Downloading aarch64 JDK: $JDK_AARCH64_FILE_NAME"
+    download_jdk "$JDK_AARCH64_INSTALL_DIR" "$JDK_AARCH64_FILE_NAME" \
+      || exit $?
+
+    echo "All JDKs downloaded successfully."
+  else
+    echo "JDKs already exist. Skipping download."
+  fi
+
+  echo "Configuring Java environment..."
+  configure_java_env "$JDK_X86_64_INSTALL_DIR" "$JDK_AARCH64_INSTALL_DIR" || {
+    echo "ERROR: Failed to configure Java environment." >&2
+    exit 1
+  }
+}
+
+function download_jdk() {
+  local arch_dir="$1"
+  local file_name="$2"
+  local url="${JDK_DOWNLOAD_BASE_URL%/}/$file_name"
+
+  # Prepare target directory
+  if [ -d "$arch_dir" ]; then
+    rm -rf "$arch_dir"/*
+  else
+    mkdir -p "$arch_dir"
+  fi
+
+  # Download (overwrite if exists)
+  wget -q --show-progress --progress=bar:force -nc -P "$DOWNLOAD_PATH" "$url"
+
+  local ret=$?
+  if [ $ret -ne 0 ]; then
+    echo "ERROR: Failed to download $file_name from $url (code $ret)" >&2
+    return $ret
+  fi
+
+  # Unpack and clean up
+  tar --no-same-owner -zxf "$DOWNLOAD_PATH/$file_name" -C "$arch_dir" --strip-components=1
+
+  # Ensure java is executable
+  local java_path="$arch_dir/bin/java"
+  test -x "$java_path" || chmod u+x "$java_path"
+
+  return 0
+}
+
+function configure_java_env() {
+  # Arguments:
+  #   $1 = x86_64 JDK install directory
+  #   $2 = aarch64 JDK install directory
+  local x86_dir="$1"
+  local aarch64_dir="$2"
+  local selected_dir
+
+  # Detect architecture
+  case "$(arch)" in
+    x86_64|amd64)
+      selected_dir="$x86_dir"
+      ;;
+    aarch64|arm64)
+      selected_dir="$aarch64_dir"
+      ;;
+    *)
+      echo "ERROR: Unsupported architecture: $(arch)" >&2
+      return 1
+      ;;
+  esac
+
+  # Only current shell
+  export JAVA_HOME="$selected_dir"
+  export PATH="$JAVA_HOME/bin:$PATH"
+  export CLASSPATH=".:$JAVA_HOME/lib/dt.jar:$JAVA_HOME/lib/tools.jar"
+
+  validate_java_path "$selected_dir/bin/java" || exit 1
+
+  echo "Java environment configured for current session: JAVA_HOME=$selected_dir"
+
+  return 0
+}
+
+function validate_java_path() {
+  local expected_java_path="$1"
+
+  local java_path
+  java_path=$(which java 2>/dev/null)
+  if [[ -z "$java_path" ]]; then
+    echo "ERROR: 'java' command not found in PATH." >&2
+    return 1
+  fi
+
+  if [[ "$java_path" == "$expected_java_path" ]]; then
+    return 0
+  else
+    echo "ERROR: Java validation failed!"
+    echo "Expected: $expected_java_path"
+    echo "Actual:   $java_path"
+    return 1
+  fi
 }
 
 function array_contains()
@@ -378,11 +471,8 @@ function compile_backend()
   done
 
   # java
-  tar -zxvf $path/thirdparty/java/OpenJDK8U-jdk_aarch64_linux_8u292b10.tar.gz -C $SAC_BUILD_PATH/sac/lib/java
-  mv $SAC_BUILD_PATH/sac/lib/java/jre $SAC_BUILD_PATH/sac/lib/java/aarch64
-
-  tar -zxvf $path/thirdparty/java/OpenJDK8U-jdk_x64_linux_8u292b10.tar.gz -C $SAC_BUILD_PATH/sac/lib/java
-  mv $SAC_BUILD_PATH/sac/lib/java/jre $SAC_BUILD_PATH/sac/lib/java/x86_64
+  cp -r $JDK_X86_64_INSTALL_DIR/jre $SAC_BUILD_PATH/sac/lib/java/x86_64
+  cp -r $JDK_AARCH64_INSTALL_DIR/jre $SAC_BUILD_PATH/sac/lib/java/aarch64
 
   # license
   cp -r $path/LICENSE $SAC_BUILD_PATH/sac
@@ -646,9 +736,8 @@ cd $SAC_PATH && path=`pwd`
 
 SAC_BUILD_PATH=$path/build
 SAC_BUILD_PACKAGES_PATH=$SAC_BUILD_PATH/packages
-LOCAL_JDK_URL_INFO_FILE_PATH=$SAC_BUILD_PACKAGES_PATH/jdkUrl.info
-LOCAL_JDK_INSTALL_FILE_PATH=$SAC_BUILD_PACKAGES_PATH/$JDK_INSTALL_FILE_NAME
-LOCAL_JDK_INSTALL_DIR=$SAC_BUILD_PACKAGES_PATH/openJDK-8u292
+JDK_X86_64_INSTALL_DIR=$path/thirdparty/java/x86_64
+JDK_AARCH64_INSTALL_DIR=$path/thirdparty/java/aarch64
 
 scope="both"
 test $# -eq 0 && { compile && exit 0; }
