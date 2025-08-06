@@ -160,11 +160,11 @@ function install_jdk() {
 
     test -d $DOWNLOAD_PATH || mkdir -p $DOWNLOAD_PATH
 
-    echo "Downloading x86_64 JDK: $JDK_X86_64_FILE_NAME"
+    echo "Downloading $JDK_X86_64_FILE_NAME ..."
     download_jdk "$JDK_X86_64_INSTALL_DIR" "$JDK_X86_64_FILE_NAME" \
       || exit $?
 
-    echo "Downloading aarch64 JDK: $JDK_AARCH64_FILE_NAME"
+    echo "Downloading $JDK_AARCH64_FILE_NAME ..."
     download_jdk "$JDK_AARCH64_INSTALL_DIR" "$JDK_AARCH64_FILE_NAME" \
       || exit $?
 
@@ -193,7 +193,7 @@ function download_jdk() {
   fi
 
   # Download (overwrite if exists)
-  wget -q --show-progress --progress=bar:force -nc -P "$DOWNLOAD_PATH" "$url"
+  wget -nc -O "$DOWNLOAD_PATH/$file_name" "$url" > /dev/null 2>&1
 
   local ret=$?
   if [ $ret -ne 0 ]; then
