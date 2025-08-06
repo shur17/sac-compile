@@ -385,7 +385,7 @@ function compile_backend()
   mv $SAC_BUILD_PATH/sac/lib/java/jre $SAC_BUILD_PATH/sac/lib/java/x86_64
 
   # license
-  cp -r $path/license $SAC_BUILD_PATH/sac
+  cp -r $path/LICENSE $SAC_BUILD_PATH/sac
 
   # tools
   # compile sac-deploy-tool
