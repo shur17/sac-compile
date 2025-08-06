@@ -68,6 +68,8 @@ sac
 │   └── sshtrust.yml
 ├── lib
 │   ├── java
+│   ├── server-lib
+│   ├── shared-lib
 │   ├── sac-agent-proxy.jar
 │   ├── sac-alert.jar
 │   ├── sac-audit.jar
@@ -78,11 +80,9 @@ sac
 │   ├── sac-registration-center.jar
 │   ├── sac-statistical.jar
 │   └── sac-user-center.jar
-├── license
+├── licenses
 │   ├── license_en.txt
 │   └── license_zh.txt
-├── plugin
-│   └── sac-agent-plugin-3.6.0.jar
 ├── agent
 │   ├── dds-backup-agent
 │   │   ├── bin
@@ -145,23 +145,8 @@ sac
 │       └── sac-upgrade-tool.jar
 ├── VERSION
 └── web
-    ├── css
+    ├── assets
     ├── favicon.ico
-    ├── fonts
-    │   ├── element-icons.535877f5.woff
-    │   └── element-icons.732389de.ttf
+    ├── font
     ├── img
-    ├── index.html
-    ├── js
-    └── static
-        ├── iconfont
-        │   ├── demo.css
-        │   ├── demo_index.html
-        │   ├── iconfont.css
-        │   ├── iconfont.js
-        │   ├── iconfont.json
-        │   ├── iconfont.svg
-        │   ├── iconfont.ttf
-        │   ├── iconfont.woff
-        │   └── iconfont.woff2
-        └── iconfont.js
+    └── index.html

@@ -7,8 +7,8 @@ installInformation: #安装信息
   upgradedir: upgrade
   rootinstallonly: false # 允许非 root 用户安装或升级
   licensefile: # licensefile
-    en: '${SYS_ORIGIN_DIR}/license/license_en.txt'
-    cn: '${SYS_ORIGIN_DIR}/license/license_zh.txt'
+    en: '${SYS_ORIGIN_DIR}/licenses/license_en.txt'
+    cn: '${SYS_ORIGIN_DIR}/licenses/license_zh.txt'
   user:  #用户
     enable: true
     name: sdbadmin
