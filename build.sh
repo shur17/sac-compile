@@ -475,7 +475,7 @@ function compile_backend()
   cp -r $JDK_AARCH64_INSTALL_DIR/jre $SAC_BUILD_PATH/sac/lib/java/aarch64
 
   # license
-  cp -r $path/LICENSE $SAC_BUILD_PATH/sac
+  cp -r $path/licenses $SAC_BUILD_PATH/sac
 
   # tools
   # compile sac-deploy-tool
