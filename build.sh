@@ -600,135 +600,6 @@ function compile_and_package()
   package
 }
 
-function package_sac_elf_files()
-{
-  local dest_path=$1
-  # compile elf-deploy-tool
-  test -d $dest_path/tools/deployment || mkdir -p $dest_path/tools/deployment
-  cp -f $path/src/tools/elf-deploy-tool/target/elf-deploy-tool.jar $dest_path/tools/deployment/elf-deploy-tool.jar
-
-  # bin file
-  test -d $dest_path/bin || mkdir -p $dest_path/bin
-  cp -f $path/thirdparty/elf/bin/el_ctl $dest_path/bin
-  cp -f $path/thirdparty/elf/bin/elf_admin $dest_path/bin
-
-  # conf file
-  test -d $dest_path/config || mkdir -p $dest_path/config
-  cp -f $path/thirdparty/elf/conf/cluster-info.yml $dest_path/config
-  cp -f $path/thirdparty/elf/conf/el-deploy.yml $dest_path/config
-  cp -f $path/thirdparty/elf/conf/nodelist.yml $dest_path/config
-  cp -f $path/thirdparty/elf/conf/serverlist.yml $dest_path/config
-
-  # daemon file
-  test -d $dest_path/tools/daemon || mkdir -p $dest_path/tools/daemon
-  cp -f $path/thirdparty/elf/tools/daemon/el_daemon $dest_path/tools/daemon
-  cp -f $path/thirdparty/elf/tools/daemon/el_daemon_ctl $dest_path/tools/daemon
-
-  # filebeat bin file
-  test -d $dest_path/filebeat-linux_x86_64/bin || mkdir -p $dest_path/filebeat-linux_x86_64/bin
-  cp -f $path/thirdparty/elf/filebeat/bin/filebeat_ctl $dest_path/filebeat-linux_x86_64/bin
-  test -d $dest_path/filebeat-linux_aarch64/bin || mkdir -p $dest_path/filebeat-linux_aarch64/bin
-  cp -f $path/thirdparty/elf/filebeat/bin/filebeat_ctl $dest_path/filebeat-linux_aarch64/bin
-
-  # filebeat daemon file
-  test -d $dest_path/filebeat-linux_x86_64/tools/daemon || mkdir -p $dest_path/filebeat-linux_x86_64/tools/daemon
-  cp -f $path/thirdparty/elf/filebeat/tools/daemon/filebeat_daemon $dest_path/filebeat-linux_x86_64/tools/daemon/filebeat_daemon
-  cp -f $path/thirdparty/elf/filebeat/tools/daemon/filebeat_daemon_ctl $dest_path/filebeat-linux_x86_64/tools/daemon/filebeat_daemon_ctl
-  test -d $dest_path/filebeat-linux_aarch64/tools/daemon || mkdir -p $dest_path/filebeat-linux_aarch64/tools/daemon
-  cp -f $path/thirdparty/elf/filebeat/tools/daemon/filebeat_daemon $dest_path/filebeat-linux_aarch64/tools/daemon/filebeat_daemon
-  cp -f $path/thirdparty/elf/filebeat/tools/daemon/filebeat_daemon_ctl $dest_path/filebeat-linux_aarch64/tools/daemon/filebeat_daemon_ctl
-}
-
-function package_elf_files()
-{
-  local dest_path=$1
-  local type=$2
-
-  # Elasticsearch files
-  test -d $dest_path/elasticsearch || mkdir -p $dest_path/elasticsearch
-  cp -r $path/thirdparty/elf/$type/elasticsearch-7.17.7/* $dest_path/elasticsearch
-
-  # Logstash files
-  test -d $dest_path/logstash || mkdir -p $dest_path/logstash
-  cp -r $path/thirdparty/elf/$type/logstash-7.17.7/* $dest_path/logstash
-
-  # Filebeat files
-  test -d $dest_path/filebeat-linux_x86_64 || mkdir -p $dest_path/filebeat-linux_x86_64
-  cp -r $path/thirdparty/elf/linux_x86_64/filebeat-7.17.7/* $dest_path/filebeat-linux_x86_64
-  test -d $dest_path/filebeat-linux_aarch64 || mkdir -p $dest_path/filebeat-linux_aarch64
-  cp -r $path/thirdparty/elf/linux_arrch64/filebeat-7.17.7/* $dest_path/filebeat-linux_aarch64
-}
-
-function compile_and_package_elf()
-{
-
-  echo "compiling elf-deploy-tool ..."
-  # get elf-deploy-tool.jar
-  cd $path/src/server
-
-  # get the first line of $path/VERSION.info to get the sac version
-  version_info=$(head -n +1 $path/VERSION.info)
-  sac_version=${version_info##*" "}
-  # set the version of sourcecode
-  mvn versions:set -DnewVersion=$sac_version
-  mvn versions:commit
-
-  local ret=0
-  mvn clean package -Dmaven.test.skip=true
-  ret=$?
-  if [[ $ret != 0 ]];
-  then
-    echo "ERROR: Failed to compile elf-deploy-tool jar file"
-    exit 1
-  fi
-  echo "success to compile elf-deploy-tool"
-
-  echo "packaging Elasticsearch, Logstash and Filebeat ..."
-  # linux-aarch64
-  test -d $SAC_BUILD_PATH/sequoiasac-elf && rm -rf $SAC_BUILD_PATH/sequoiasac-elf
-  mkdir -p $SAC_BUILD_PATH/sequoiasac-elf
-  package_sac_elf_files $SAC_BUILD_PATH/sequoiasac-elf
-  package_elf_files $SAC_BUILD_PATH/sequoiasac-elf linux_arrch64
-  # create elasticsearch plugins path
-  test -d $SAC_BUILD_PATH/sequoiasac-elf/elasticsearch/plugins || mkdir -p $SAC_BUILD_PATH/sequoiasac-elf/elasticsearch/plugins
-  # create elasticsearch logs path
-  test -d $SAC_BUILD_PATH/sequoiasac-elf/elasticsearch/logs || mkdir -p $SAC_BUILD_PATH/sequoiasac-elf/elasticsearch/logs
-  # create logstash data path
-  test -d $SAC_BUILD_PATH/sequoiasac-elf/logstash/data || mkdir -p $SAC_BUILD_PATH/sequoiasac-elf/logstash/data
-  # tar
-  cd $SAC_BUILD_PATH
-  chmod -R u=rwx,g=rx,o=rx sequoiasac-elf
-  # get the first line of $path/VERSION.info to get the sac version
-  version_info=$(head -n +1 $path/VERSION.info)
-  sac_version=${version_info##*" "}
-  test -f sequoiasac-elf-${sac_version}-linux_aarch64-enterprise.tar.gz && rm -f sequoiasac-elf-${sac_version}-linux_aarch64-enterprise.tar.gz
-  tar -zcvf sequoiasac-elf-${sac_version}-linux_aarch64-enterprise.tar.gz sequoiasac-elf >> /dev/null 2>&1
-  test -d $SAC_BUILD_PATH/sequoiasac-elf && rm -rf $SAC_BUILD_PATH/sequoiasac-elf
-
-  # linux-x86_64
-  test -d $SAC_BUILD_PATH/sequoiasac-elf || mkdir -p $SAC_BUILD_PATH/sequoiasac-elf
-  package_sac_elf_files $SAC_BUILD_PATH/sequoiasac-elf
-  package_elf_files $SAC_BUILD_PATH/sequoiasac-elf linux_x86_64
- # create elasticsearch plugins path
-  test -d $SAC_BUILD_PATH/sequoiasac-elf/elasticsearch/plugins || mkdir -p $SAC_BUILD_PATH/sequoiasac-elf/elasticsearch/plugins
-  # create elasticsearch logs path
-  test -d $SAC_BUILD_PATH/sequoiasac-elf/elasticsearch/logs || mkdir -p $SAC_BUILD_PATH/sequoiasac-elf/elasticsearch/logs
-  # create logstash data path
-  test -d $SAC_BUILD_PATH/sequoiasac-elf/logstash/data || mkdir -p $SAC_BUILD_PATH/sequoiasac-elf/logstash/data
-  # tar
-  cd $SAC_BUILD_PATH
-  chmod -R u=rwx,g=rx,o=rx sequoiasac-elf
-  test -f sequoiasac-elf-${sac_version}-linux_x86_64-enterprise.tar.gz && rm -f sequoiasac-elf-${sac_version}-linux_x86_64-enterprise.tar.gz
-  tar -zcvf sequoiasac-elf-${sac_version}-linux_x86_64-enterprise.tar.gz sequoiasac-elf >> /dev/null 2>&1
-  test -d $SAC_BUILD_PATH/sequoiasac-elf && rm -rf $SAC_BUILD_PATH/sequoiasac-elf
-
-  echo "success to package Elasticsearch, Logstash and Filebeat, packaged file list: "
-  echo "$SAC_BUILD_PATH/sequoiasac-elf-${sac_version}-linux_aarch64-enterprise.tar.gz"
-  echo "$SAC_BUILD_PATH/sequoiasac-elf-${sac_version}-linux_x86_64-enterprise.tar.gz"
-
-  exit 0
-}
-
 # get path
 dir_name=`dirname $0`
 if [[ ${dir_name:0:1} != "/" ]]; then
@@ -769,9 +640,6 @@ do
 
     -s | --scope)
       test -z $2 || scope=$2
-      if [[ $scope =~ "elf" ]]; then
-        need_compile=false
-      fi
       shift 2
       ;;
 
@@ -829,9 +697,3 @@ fi
 if [[ $need_compile_and_package = true && $need_compile_and_run_tests = false ]]; then
   compile_and_package
 fi
-
-if [[ $scope =~ "elf" ]]; then
-  check
-  compile_and_package_elf
-fi
-
