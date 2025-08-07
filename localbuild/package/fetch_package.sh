@@ -84,6 +84,6 @@ else
     download_package "view/daily_sql/job/dailybuild_3.4_mariadb_x86/" "sequoiasql-mariadb-[0-9.]*-linux_x86_64-enterprise-installer.run"
 fi
 download_package "view/daily_sac/job/compile_master_sequoiasac/" "sequoiasac-[0-9.]*-linux_x86_64-enterprise-installer.run"
-download_package "view/daily_sac/job/compile_master_sequoiasac/" "build/sequoiasac-elf-[0-9.]*-linux_x86_64-enterprise.tar.gz"
+download_package "view/daily_sac/job/compile_master_elf/" "sequoiasac-elf-[0-9.]*-linux_x86_64-enterprise.tar.gz"
 
 echo "Download completed."
