@@ -4,7 +4,8 @@ JDK_DOWNLOAD_BASE_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/do
 JDK_X86_64_FILE_NAME="OpenJDK8U-jdk_x64_linux_8u292b10.tar.gz"
 JDK_AARCH64_FILE_NAME="OpenJDK8U-jdk_aarch64_linux_8u292b10.tar.gz"
 
-DOWNLOAD_PATH="/tmp/sequoiasac/download"
+TMP_PATH="/tmp/sequoiasac"
+DOWNLOAD_PATH="$TMP_PATH/download"
 WEB_NODE_MODULES_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/web-node_modules-6.10.tar.gz"
 DDS_BACKUP_AGENT_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/dds-backup-agent_1.4.1.tar.gz"
 
@@ -192,16 +193,20 @@ function download_jdk() {
     mkdir -p "$arch_dir"
   fi
 
-  # Download (overwrite if exists)
-  wget -nc -O "$DOWNLOAD_PATH/$file_name" "$url" > /dev/null 2>&1
+  # Download if not exists
+  if [ ! -f "$DOWNLOAD_PATH/$file_name" ]; then
+    wget -nc -O "$DOWNLOAD_PATH/$file_name" "$url" > /dev/null 2>&1
 
-  local ret=$?
-  if [ $ret -ne 0 ]; then
-    echo "ERROR: Failed to download $file_name from $url (code $ret)" >&2
-    return $ret
+    local ret=$?
+    if [ $ret -ne 0 ]; then
+      echo "ERROR: Failed to download $file_name from $url (code $ret)" >&2
+      return $ret
+    fi
+  else
+    echo "Skipping download, file already exists: $file_name"
   fi
 
-  # Unpack and clean up
+  # Unpack
   tar --no-same-owner -zxf "$DOWNLOAD_PATH/$file_name" -C "$arch_dir" --strip-components=1
 
   # Ensure java is executable
@@ -798,6 +803,15 @@ do
       exit 1
   esac
 done
+
+# Ensure DOWNLOAD_PATH exists and set permissions
+if [[ ! -d "$TMP_PATH" ]]; then
+  mkdir -p "$TMP_PATH"
+  chmod 777 "$TMP_PATH"
+elif [[ $EUID -eq 0 ]]; then
+  # If directory exists and current user is root, update permissions
+  chmod 777 "$TMP_PATH"
+fi
 
 if [[ $need_clean = true ]]; then
   clean
