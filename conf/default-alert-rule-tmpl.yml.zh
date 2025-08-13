@@ -267,6 +267,18 @@ rules:
     summary_tmpl: "${alert_target} 已降为备节点"
     description_tmpl: "${alert_target} 已降为备节点"
 
+  - name: "SDB_Primary_Node_Switch_Weight_Drop"
+    desc: "SDB主节点切换(切换后的主节点权重小于原来的主节点权重)"
+    scope: "cluster"
+    eval_metric: "SDB_Primary_Node_Switch_Weight_Drop"
+    eval_rules:
+      - severity: 2
+        fire_duration: 0
+    evaluation_interval: 30
+    resolved_interval: -1
+    summary_tmpl: "${alert_target} 已降为备节点"
+    description_tmpl: "${alert_target} 已降为备节点"
+
   # SDB DDS
   - name: "DDS_Error_Node"
     desc: "SequoiaDB DDS 节点无法访问"

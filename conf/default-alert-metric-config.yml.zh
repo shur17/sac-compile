@@ -223,6 +223,17 @@ metrics:
       target: $result.NodeName
     value: $labels.target
 
+  - name: SDB_Primary_Node_Switch_Weight_Drop
+    clusterType: 0
+    desc: "发生切主的 SequoiaDB 节点(切换后的主节点权重小于原来的主节点权重)"
+    scope: "cluster"
+    unit: "none"
+    reader:
+      node: sac.primary_node_switch_weight_drop_query('NodeName,GroupName,Weight')
+    labels:
+      target: $result.NodeName
+    value: $labels.target
+
   #################################### SequoiaDB DDS ####################################
 
   - name: DDS_Error_Node
