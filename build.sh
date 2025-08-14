@@ -7,7 +7,7 @@ JDK_AARCH64_FILE_NAME="OpenJDK8U-jdk_aarch64_linux_8u292b10.tar.gz"
 TMP_PATH="/tmp/sequoiasac"
 DOWNLOAD_PATH="$TMP_PATH/download"
 WEB_NODE_MODULES_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/web-node_modules-6.10.tar.gz"
-DDS_BACKUP_AGENT_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/dds-backup-agent_1.4.1-2-g151d333.tar.gz"
+DDS_BACKUP_AGENT_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/dds-backup-agent_1.4.2.tar.gz"
 
 # SAC 安装目录下的 conf 目录下要保存的文件
 KEEP_CONF_FILES=("samples" "service" "dds-conf-desc" "sdb-conf-desc" "default-alert-metric-config.yml.en" "default-alert-metric-config.yml.zh"
@@ -523,7 +523,7 @@ function compile_backend()
   test -d $path/agent/sac-agent/conf/samples && cp $path/agent/sac-agent/conf/samples/* $SAC_BUILD_PATH/sac/agent/sac-agent/conf
 
   # dds-backup-agent
-  local tmpBackupAgentFile="${DOWNLOAD_PATH}/dds-backup-agent_1.4.1.tar.gz"
+  local tmpBackupAgentFile="${DOWNLOAD_PATH}/dds-backup-agent_1.4.2.tar.gz"
   mkdir -p $DOWNLOAD_PATH
   wget -nc -O $tmpBackupAgentFile "${DDS_BACKUP_AGENT_URL}" > /dev/null 2>&1
   echo "INFO: 'dds_backup_agent' download complete."
