@@ -391,6 +391,12 @@ function compile_backend()
   done
 
   # lib
+  # compile dds-backup-agent-driver
+  cd $path/lib/src/dds-backup-driver
+  chmod u+x compile.sh && bash compile.sh --mode package
+  cp "$(ls -t driver/target/dds-backup-driver-*-jar-with-dependencies.jar | head -n 1)" \
+     $path/lib/dds-backup-driver-1.4.2.jar
+
   cd $path/src/server
 
   # check alert config file

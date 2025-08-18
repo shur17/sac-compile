@@ -8,3 +8,4 @@ target/
 sac-auto-testcase
 shared-lib/
 /src
+lib/src
