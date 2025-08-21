@@ -6,9 +6,9 @@ metrics:
     scope: "cluster"
     unit: "digit"
     reader:
-      sql: sac.inc_query('perf_sql_node{NodeName,Aborted_connects}', 'Aborted_connects', '5m')
+      sql: sac.inc_query('perf_sql_node{metadata,Aborted_connects}', 'Aborted_connects', '5m')
     labels:
-      target: $result.NodeName
+      target: $result.metadata.NodeName
       aborted_connects: $result.Aborted_connects
     value: $labels.aborted_connects
 
@@ -18,9 +18,9 @@ metrics:
     scope: "cluster"
     unit: "digit"
     reader:
-      sql: sac.inc_query('perf_sql_node{NodeName,Aborted_clients}', 'Aborted_clients', '5m')
+      sql: sac.inc_query('perf_sql_node{metadata,Aborted_clients}', 'Aborted_clients', '5m')
     labels:
-      target: $result.NodeName
+      target: $result.metadata.NodeName
       aborted_clients: $result.Aborted_clients
     value: $labels.aborted_clients
 
@@ -30,13 +30,13 @@ metrics:
     scope: "cluster"
     unit: "percentage"
     reader:
-      perf: "sac.query('perf_sql_node{NodeName,Threads_connected}')"
-      meta: "sac.query('res_sql_node_config{NodeName,config_max_connections,config_MAX_CONNECTIONS}')"
-    processor: "sac.left_join($perf, 'NodeName', $meta, 'NodeName')"
+      perf: "sac.query('perf_sql_node{metadata,Threads_connected}')"
+      meta: "sac.query('metadata_sql_node{NodeName,max_connections,MAX_CONNECTIONS}')"
+    processor: "sac.left_join($perf, 'metadata.NodeName', $meta, 'NodeName')"
     labels:
-      target: $result.NodeName
+      target: $result.metadata.NodeName
       threads_connected: sac.ifNull($result.Threads_connected, 0)
-      max_connections: if $result.config_max_connections==nil && $result.config_MAX_CONNECTIONS==nil  { 0 } else { sac.ifNull(sac.ifNull($result.config_max_connections, $result.config_MAX_CONNECTIONS), 0) }
+      max_connections: if $result.max_connections==nil && $result.MAX_CONNECTIONS==nil  { 0 } else { sac.ifNull(sac.ifNull($result.max_connections, $result.MAX_CONNECTIONS), 0) }
     value: sac.percentage($labels.threads_connected, long($labels.max_connections))
 
   - name: SQL_Threads_Running
@@ -45,9 +45,9 @@ metrics:
     scope: "cluster"
     unit: "digit"
     reader:
-      sql: "sac.query('perf_sql_node{NodeName,Threads_running}')"
+      sql: "sac.query('perf_sql_node{metadata,Threads_running}')"
     labels:
-      target: $result.NodeName
+      target: $result.metadata.NodeName
       threads_running: $result.Threads_running
     value: $labels.threads_running
 
@@ -57,26 +57,11 @@ metrics:
     scope: "cluster"
     unit: "digit"
     reader:
-      sql: "sac.inc_query('perf_sql_node{NodeName,Threads_running}', 'Threads_running', '5m')"
+      sql: "sac.inc_query('perf_sql_node{metadata,Threads_running}', 'Threads_running', '5m')"
     labels:
-      target: $result.NodeName
+      target: $result.metadata.NodeName
       threads_running: $result.Threads_running
     value: $labels.threads_running
-
-  - name: SQL_Opened_Files_ratio
-    clusterType: 0
-    desc: "SQL 实例打开的文件句柄数比例"
-    scope: "cluster"
-    unit: "percentage"
-    reader:
-      perf: "sac.query('perf_sql_node{NodeName,Open_files}')"
-      meta: "sac.query('res_sql_node_config{NodeName,config_open_files_limit,config_OPEN_FILES_LIMIT}')"
-    processor: "sac.left_join($perf, 'NodeName', $meta, 'NodeName')"
-    labels:
-      target: $result.NodeName
-      open_files: $result.Open_files
-      open_files_limit: if $result.config_open_files_limit==nil && $result.config_OPEN_FILES_LIMIT==nil { 0 } else { sac.ifNull(sac.ifNull($result.config_open_files_limit, $result.config_OPEN_FILES_LIMIT), 0) }
-    value: sac.percentage($labels.open_files, long($labels.open_files_limit))
 
   - name: SQL_Error_Instance
     clusterType: 0
@@ -115,7 +100,7 @@ metrics:
     unit: "enumerate"
     unitOptions: ["Rebuilding","FullSync"]
     reader:
-      node: "sac.query('perf_sdb_node{NodeName,Status}')"
+      node: "sac.query('metadata_sdb_node{NodeName,Status}')"
     labels:
       target: $result.NodeName
       status_num: $result.Status
@@ -129,7 +114,7 @@ metrics:
     unit: "enumerate"
     unitOptions: ["NOSPC","DEADSYNC","SLOWNODE","TRANSERR"]
     reader:
-      node: "sac.query('perf_sdb_node{NodeName,FTStatus}')"
+      node: "sac.query('metadata_sdb_node{NodeName,FTStatus}')"
     labels:
       target: $result.NodeName
       ft_status_num: $result.FTStatus
@@ -142,14 +127,12 @@ metrics:
     scope: "cluster"
     unit: "percentage"
     reader:
-      perf: sac.query('perf_sdb_node{NodeName,metadata.GroupName,DiffLSNWithPrimary}')
-      meta: sac.query('metadata_sdb_node{NodeName,TotalLogSpace}')
-    processor: sac.left_join($perf,'NodeName',$meta,'NodeName')
+      perf: sac.query('perf_sdb_node{metadata,GroupName,DiffLSNWithPrimary,TotalLogSpace}')
     labels:
-      target: $result.NodeName
-      group_name: $result.metadata.GroupName
+      target: $result.metadata.NodeName
+      group_name: $result.GroupName
       diff_lsn_with_primary: $result.DiffLSNWithPrimary
-      total_log_space: sac.ifNull($result.TotalLogSpace, 0) * 1024 * 1024
+      total_log_space: sac.ifNull($result.TotalLogSpace, 0)
     value: sac.percentage($labels.diff_lsn_with_primary, $labels.total_log_space)
 
   - name: SDB_Connects_Maxpool_ratio
@@ -158,13 +141,13 @@ metrics:
     scope: "cluster"
     unit: "percentage"
     reader:
-      perf: sac.query('perf_sdb_node{NodeId,NodeName,TotalNumConnects}')
-      meta: sac.query('res_sdb_node_config{NodeId,NodeName,config_maxpool}')
+      perf: sac.query('perf_sdb_node{NodeId,metadata,TotalNumConnects}')
+      meta: sac.query('metadata_sdb_node{NodeId,NodeName,MaxPool}')
     processor: sac.left_join($perf, 'NodeId', $meta, 'NodeId')
     labels:
-      target: $result.NodeName
+      target: $result.metadata.NodeName
       total_num_connects: $result.TotalNumConnects
-      maxpool: if $result.config_maxpool==nil { 0 } else { $result.config_maxpool }
+      maxpool: if $result.MaxPool==nil { 0 } else { $result.MaxPool }
     value: sac.percentage($labels.total_num_connects, $labels.maxpool)
 
   - name: SDB_Connects_Maxconn_ratio
@@ -173,13 +156,13 @@ metrics:
     scope: "cluster"
     unit: "percentage"
     reader:
-      perf: sac.query('perf_sdb_node{NodeId,NodeName,TotalNumConnects}')
-      meta: sac.query('res_sdb_node_config{NodeId,NodeName,config_maxconn}')
+      perf: sac.query('perf_sdb_node{NodeId,metadata,TotalNumConnects}')
+      meta: sac.query('metadata_sdb_node{NodeId,NodeName,MaxConn}')
     processor: sac.left_join($perf,'NodeId',$meta,'NodeId')
     labels:
-      target: $result.NodeName
+      target: $result.metadata.NodeName
       total_num_connects: $result.TotalNumConnects
-      maxconn: if $result.config_maxconn==nil { 0 } else { $result.config_maxconn }
+      maxconn: if $result.MaxConn==nil { 0 } else { $result.MaxConn }
     value: sac.percentage($labels.total_num_connects, $labels.maxconn)
 
   - name: SDB_FreeLogSpace_ratio
@@ -188,14 +171,12 @@ metrics:
     scope: "cluster"
     unit: "percentage"
     reader:
-      perf: sac.query('perf_sdb_node{NodeId,NodeName,FreeLogSpace,Role}')
-      meta: sac.query('metadata_sdb_node{NodeId,NodeName,TotalLogSpace}')
-    processor: sac.left_join($perf, 'NodeId', $meta, 'NodeId')
+      perf: sac.query('perf_sdb_node{metadata,UsedLogSpace,TotalLogSpace,Role}')
     labels:
-      target: $result.NodeName
+      target: $result.metadata.NodeName
       role: $result.Role
-      free_log_space: $result.FreeLogSpace
-      total_log_space: sac.ifNull($result.TotalLogSpace, 0) * 1024 * 1024
+      free_log_space: sac.ifNull($result.TotalLogSpace, 0) - sac.ifNull($result.UsedLogSpace, 0)
+      total_log_space: sac.ifNull($result.TotalLogSpace, 0)
     value: if $labels.role==1 { 100 } else { sac.percentage($labels.free_log_space, $labels.total_log_space) }
 
   - name: SDB_DiskFreeSpace_ratio
@@ -204,11 +185,11 @@ metrics:
     scope: "cluster"
     unit: "percentage"
     reader:
-      perf: sac.query('perf_sdb_node{NodeName,DiskFreeSpace,DiskTotalSpace,Role}')
+      perf: sac.query('perf_sdb_node{metadata,DiskUsedSpace,DiskTotalSpace,Role}')
     labels:
-      target: $result.NodeName
+      target: $result.metadata.NodeName
       role: $result.Role
-      disk_free_space: $result.DiskFreeSpace
+      disk_free_space: $result.DiskTotalSpace - $result.DiskUsedSpace
       disk_total_space: $result.DiskTotalSpace
     value: if $labels.role==1 { 100 } else { sac.percentage($labels.disk_free_space, $labels.disk_total_space) }
 

@@ -84,23 +84,6 @@ rules:
     summary_tmpl: "${alert_target} 实例新增活动线程数过高"
     description_tmpl: "${alert_target} 实例新增活动线程数过高，5分钟内超过 ${alert_threshold} 次，当前 ${alert_value} 次"
 
-  - name: "SQL_Too_Many_Opened_Files"
-    desc: "SQL实例打开的文件句柄数过高"
-    scope: "cluster"
-    eval_metric: "SQL_Opened_Files_ratio"
-    eval_rules:
-      - operator: ">"
-        threshold: 80
-        severity: 2
-        fire_duration: 120
-    operator_options:
-      - ">"
-      - ">="
-    evaluation_interval: 60
-    resolved_interval: 120
-    summary_tmpl: "${alert_target} 实例打开的文件句柄数过高"
-    description_tmpl: "${alert_target} 实例打开的文件句柄数持续 ${alert_duration} 秒超过 open_files_limit(${alert_labels.open_files_limit}) 的 ${alert_threshold}%，当前文件句柄数 ${alert_labels.open_files}"
-
   - name: "SQL_Error_Instance"
     desc: "SQL实例无法访问"
     scope: "cluster"

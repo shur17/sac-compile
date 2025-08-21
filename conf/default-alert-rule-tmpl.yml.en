@@ -85,23 +85,6 @@ rules:
     summary_tmpl: "Too many new running threads added to instance ${alert_target}."
     description_tmpl: "Too many new running threads added to instance ${alert_target}, more than ${alert_threshold} within 5 minutes, currently ${alert_value}."
 
-  - name: "SQL_Too_Many_Opened_Files"
-    desc: "Too many files opened by SQL instance."
-    scope: "cluster"
-    eval_metric: "SQL_Opened_Files_ratio"
-    eval_rules:
-      - operator: ">"
-        threshold: 80
-        severity: 2
-        fire_duration: 120
-    operator_options:
-      - ">"
-      - ">="
-    evaluation_interval: 60
-    resolved_interval: 120
-    summary_tmpl: "Too many files opened by ${alert_target} instance."
-    description_tmpl: "The number of files opened by ${alert_target} exceeds ${alert_threshold}% of the open_files_limit(${alert_labels.open_files_limit}) for ${alert_duration} seconds, currently ${alert_labels.open_files}"
-
   - name: "SQL_Error_Instance"
     desc: "SQL instance error."
     scope: "cluster"
