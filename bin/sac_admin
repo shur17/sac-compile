@@ -127,6 +127,36 @@ function help()
   echo "  -l, --list             list hidden subcommand"
 }
 
+# 为指定服务建立软链到 shared-lib
+# 参数1: service_name
+link_service_libs() {
+  local service_name="$1"
+
+  local service_lib_dir="$SAC_ADMIN_INSTALL_PATH/tools/lib/tools-lib/${service_name}-lib"
+  local classpath_file="$SAC_ADMIN_INSTALL_PATH/tools/lib/classpath/${service_name}.classpath"
+  local shared_lib_dir="$SAC_ADMIN_INSTALL_PATH/tools/lib/shared-lib"
+
+  # 如果目录存在则清空其中内容，否则创建目录
+  if [[ -d "$service_lib_dir" ]]; then
+    rm -rf "$service_lib_dir"/*
+  else
+    exec_cmd "mkdir -p $service_lib_dir"
+  fi
+
+  # 逐行读取 .classpath 文件并建立软链
+  if [[ -f "$classpath_file" ]]; then
+    while IFS= read -r jarfile; do
+      if [[ -f "$shared_lib_dir/$jarfile" ]]; then
+        exec_cmd "ln -sf $shared_lib_dir/$jarfile $service_lib_dir/"
+      else
+        echo "Warning: $jarfile not found in shared-lib, skipped." >&2
+      fi
+    done < "$classpath_file"
+  else
+    echo "Warning: classpath file $classpath_file not found." >&2
+  fi
+}
+
 function exec_cmd_with_actual_exit_code()
 {
   # 给 $ 字符前面加上 \ 转义符
@@ -158,7 +188,8 @@ function deploysac()
   local args="deploysac -c $SAC_ADMIN_CONF_PATH -f $SAC_ADMIN_FORCE"
   test -z $SAC_ADMIN_USER || args="${args} -u '$SAC_ADMIN_USER'"
   test -z $SAC_ADMIN_PASSWD || args="${args} -p '$SAC_ADMIN_PASSWD'"
-  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to deploy SAC\\.|SAC has been deployed\\."
+  link_service_libs "sac-deploy-tool"
+  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -Dloader.path=$SAC_ADMIN_INSTALL_PATH/tools/lib/tools-lib/sac-deploy-tool-lib -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to deploy SAC\\.|SAC has been deployed\\."
 }
 
 function dropsac()
@@ -182,9 +213,10 @@ function dropsac()
   test -z $SAC_ADMIN_PASSWD || args="${args} -p '$SAC_ADMIN_PASSWD'"
   local cur_timestamp=$(date +%s%6N)
   local check_sac_admin_log="/tmp/sequoiasac/log/sac_admin_$cur_timestamp.log"
+  link_service_libs "sac-deploy-tool"
   # 给 $ 字符前面加上 \ 转义符
   args=$(echo "$args" | sed 's/\$/\\$/g')
-  exec_cmd "script -c \"$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args; exit \" -q $check_sac_admin_log"
+  exec_cmd "script -c \"$_java $DEFAULT_JVM_OPTS -Dloader.path=$SAC_ADMIN_INSTALL_PATH/tools/lib/tools-lib/sac-deploy-tool-lib -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args; exit \" -q $check_sac_admin_log"
   if [[ $SAC_ADMIN_FORCE == true ]]; then
     exit 0
   fi
@@ -207,7 +239,8 @@ function dropddsbackupagent()
   test -z $SAC_ADMIN_CONF_PATH || args="${args} -c $SAC_ADMIN_CONF_PATH"
   test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
   test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
-  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to drop dds backup agent"
+  link_service_libs "sac-deploy-tool"
+  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -Dloader.path=$SAC_ADMIN_INSTALL_PATH/tools/lib/tools-lib/sac-deploy-tool-lib -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to drop dds backup agent"
 }
 
 function getagentmetric()
@@ -227,7 +260,8 @@ function getagentmetric()
   local args="getagentmetric -c $SAC_ADMIN_CONF_PATH -i $SAC_ADMIN_INTERVAL -t $SAC_ADMIN_TIMES"
   test -z $SAC_ADMIN_SAC_USER || args="${args} --sac-user '$SAC_ADMIN_SAC_USER'"
   test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
-  exec_cmd "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args"
+  link_service_libs "sac-deploy-tool"
+  exec_cmd "$_java $DEFAULT_JVM_OPTS -Dloader.path=$SAC_ADMIN_INSTALL_PATH/tools/lib/tools-lib/sac-deploy-tool-lib -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args"
 }
 
 function encrypt()
@@ -240,7 +274,8 @@ function encrypt()
   fi
   local args="encrypt"
   test -z $SAC_ADMIN_PASSWD || args="${args} -p '$SAC_ADMIN_PASSWD'"
-  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to encrypt\\."
+  link_service_libs "sac-deploy-tool"
+  exec_cmd_with_actual_exit_code "$_java $DEFAULT_JVM_OPTS -Dloader.path=$SAC_ADMIN_INSTALL_PATH/tools/lib/tools-lib/sac-deploy-tool-lib -jar $SAC_ADMIN_SAC_TOOL_JAR_PATH $args" "Success to encrypt\\."
 }
 
 function createtrust()
@@ -260,7 +295,8 @@ function createtrust()
   test -z $SAC_ADMIN_SSH_USER || args="${args} --ssh-user '$SAC_ADMIN_SSH_USER'"
   test -z $SAC_ADMIN_SSH_PASSWD || args="${args} --ssh-passwd '$SAC_ADMIN_SSH_PASSWD'"
   test -z $SAC_ADMIN_KEY_FILE || args="${args} --key-file $SAC_ADMIN_KEY_FILE"
-  exec_cmd "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SDB_SSH_JAR_PATH $args"
+  link_service_libs "sdb-ssh-tool"
+  exec_cmd "$_java $DEFAULT_JVM_OPTS -Dloader.path=$SAC_ADMIN_INSTALL_PATH/tools/lib/tools-lib/sdb-ssh-tool-lib  -jar $SAC_ADMIN_SDB_SSH_JAR_PATH $args"
 }
 
 function checktrust()
@@ -280,7 +316,8 @@ function checktrust()
   test -z $SAC_ADMIN_SSH_USER || args="${args} --ssh-user '$SAC_ADMIN_SSH_USER'"
   test -z $SAC_ADMIN_SSH_PASSWD || args="${args} --ssh-passwd '$SAC_ADMIN_SSH_PASSWD'"
   test -z $SAC_ADMIN_KEY_FILE || args="${args} --key-file $SAC_ADMIN_KEY_FILE"
-  exec_cmd "$_java $DEFAULT_JVM_OPTS -jar $SAC_ADMIN_SDB_SSH_JAR_PATH $args"
+  link_service_libs "sdb-ssh-tool"
+  exec_cmd "$_java $DEFAULT_JVM_OPTS -Dloader.path=$SAC_ADMIN_INSTALL_PATH/tools/lib/tools-lib/sdb-ssh-tool-lib -jar $SAC_ADMIN_SDB_SSH_JAR_PATH $args"
 }
 
 function upgrade()
@@ -297,7 +334,8 @@ function upgrade()
   test -z $SAC_ADMIN_SAC_PASSWD || args="${args} --sac-passwd '$SAC_ADMIN_SAC_PASSWD'"
   test -z $SAC_VERSION_UPGRADE_RULE_FILE || args="${args} --sac-version-upgrade-rule-file $SAC_VERSION_UPGRADE_RULE_FILE"
   test -z $AGENT_VERSION_UPGRADE_RULE_FILE || args="${args} --agent-version-upgrade-rule-file $AGENT_VERSION_UPGRADE_RULE_FILE"
-  exec_cmd "$_java $DEFAULT_JVM_OPTS -Dspring.config.additional-location=$SAC_INSTALL_DIR_PATH/conf/sac-config/properties/application-common.yml -Dsac.install-file-path=$SAC_INSTALL_FILE_PATH -jar $SAC_ADMIN_UPGRADE_JAR_PATH $args"
+  link_service_libs "sac-upgrade-tool"
+  exec_cmd "$_java $DEFAULT_JVM_OPTS -Dloader.path=$SAC_ADMIN_INSTALL_PATH/tools/lib/tools-lib/sac-upgrade-tool-lib -Dspring.config.additional-location=$SAC_INSTALL_DIR_PATH/conf/sac-config/properties/application-common.yml -Dsac.install-file-path=$SAC_INSTALL_FILE_PATH -jar $SAC_ADMIN_UPGRADE_JAR_PATH $args"
 }
 
 get_sac_install_info() {

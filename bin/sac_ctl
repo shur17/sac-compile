@@ -533,7 +533,32 @@ function inner_start()
   local protocol=""
   test $sslEnabled == "true" && protocol="https" || protocol="http"
   local tomcat_tmpl_path=$SAC_CTL_INSTALL_PATH/tmp/tomcat.$SAC_CTL_TEMP_PORT/
-  local DEFAULT_JVM_OPTS="-Dloader.path=$SAC_CTL_INSTALL_PATH/lib/shared-lib,$SAC_CTL_INSTALL_PATH/lib/server-lib/$service_name-lib -Duser.name=$SAC_USER -Duser.group.name=$SAC_USER_GROUP -Djava.io.tmpdir=$tomcat_tmpl_path -Dfile.encoding=utf-8 -Dserver.tomcat.basedir=$tomcat_tmpl_path -Dversion.file=$VERSION_FILE -Dsac.dir=$SAC_CTL_INSTALL_PATH -Dsac.protocol=$protocol -Dspring.config.additional-location=$SAC_CTL_INSTALL_PATH/conf/$service_name/bootstrap.yml -Dsac.log.path=$SAC_LOG_PATH -Dlogging.config=$SAC_CTL_INSTALL_PATH/conf/$service_name/logback.xml -Dservice_name=$service_name -XX:ErrorFile=$SAC_LOG_PATH/$service_name/hs_err_pid%p.log"
+
+  local service_lib_dir="$SAC_CTL_INSTALL_PATH/lib/server-lib/$service_name-lib"
+  local classpath_file="$SAC_CTL_INSTALL_PATH/lib/classpath/$service_name.classpath"
+  local shared_lib_dir="$SAC_CTL_INSTALL_PATH/lib/shared-lib"
+
+  # 如果目录存在则清空其中内容，否则创建目录
+  if [[ -d "$service_lib_dir" ]]; then
+    rm -rf "$service_lib_dir"/*
+  else
+    exec_cmd "mkdir -p $service_lib_dir"
+  fi
+
+  # 逐行读取 .classpath 文件并建立软链
+  if [[ -f "$classpath_file" ]]; then
+    while IFS= read -r jarfile; do
+      if [[ -f "$shared_lib_dir/$jarfile" ]]; then
+        exec_cmd "ln -sf $shared_lib_dir/$jarfile $service_lib_dir/"
+      else
+        echo "Warning: $jarfile not found in shared-lib, skipped." >&2
+      fi
+    done < "$classpath_file"
+  else
+    echo "Warning: classpath file $classpath_file not found." >&2
+  fi
+
+  local DEFAULT_JVM_OPTS="-Dloader.path=$SAC_CTL_INSTALL_PATH/lib/server-lib/$service_name-lib -Duser.name=$SAC_USER -Duser.group.name=$SAC_USER_GROUP -Djava.io.tmpdir=$tomcat_tmpl_path -Dfile.encoding=utf-8 -Dserver.tomcat.basedir=$tomcat_tmpl_path -Dversion.file=$VERSION_FILE -Dsac.dir=$SAC_CTL_INSTALL_PATH -Dsac.protocol=$protocol -Dspring.config.additional-location=$SAC_CTL_INSTALL_PATH/conf/$service_name/bootstrap.yml -Dsac.log.path=$SAC_LOG_PATH -Dlogging.config=$SAC_CTL_INSTALL_PATH/conf/$service_name/logback.xml -Dservice_name=$service_name -XX:ErrorFile=$SAC_LOG_PATH/$service_name/hs_err_pid%p.log"
   # get config jvm options
   local CONF_JVM_OPTS
   if [[ ! -f $SAC_CTL_INSTALL_PATH/conf/$service_name/$service_name.vmoptions ]]; then

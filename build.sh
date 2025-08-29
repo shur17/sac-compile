@@ -293,6 +293,7 @@ function rm_dir()
   test -d $SAC_BUILD_PATH && cd $SAC_BUILD_PATH && rm -rf `ls | grep -v "packages"`
 
   rm -rf $path/src/server/*/shared-lib
+  rm -rf $path/src/tools/*/shared-lib
 }
 
 # create directory before compiling
@@ -372,6 +373,51 @@ function rewrite()
   echo "$version_info" > $SAC_BUILD_PATH/sac/agent/sac-agent/VERSION
 }
 
+# 处理 shared-lib 和 classpath
+# 参数1: 服务名数组 (用 "${array[@]}" 传)
+# 参数2: 类型 server 或 tools
+process_shared_libs()
+{
+  local sac_server_names=("$@")     # 接收所有参数
+  local type="${sac_server_names[-1]}"  # 最后一个参数作为类型
+  unset 'sac_server_names[${#sac_server_names[@]}-1]' # 去掉最后一个参数（类型）
+
+  for sac_server_name in "${sac_server_names[@]}"; do
+    if [[ "$type" == "server" ]]; then
+      dir="$path/src/server/$sac_server_name/shared-lib"
+      dest_shared="$SAC_BUILD_PATH/sac/lib/shared-lib"
+      dest_classpath="$SAC_BUILD_PATH/sac/lib/classpath"
+    elif [[ "$type" == "tools" ]]; then
+      dir="$path/src/tools/$sac_server_name/shared-lib"
+      dest_shared="$SAC_BUILD_PATH/sac/tools/lib/shared-lib"
+      dest_classpath="$SAC_BUILD_PATH/sac/tools/lib/classpath"
+    else
+      echo "未知类型: $type"
+      return 1
+    fi
+
+    # 创建目标目录
+    mkdir -p "$dest_shared" "$dest_classpath"
+
+    if [[ -d "$dir" ]]; then
+      classpath_file="$dest_classpath/$sac_server_name.classpath"
+      : > "$classpath_file"   # 清空/新建
+
+      for file in "$dir"/*; do
+        if [[ -f "$file" ]]; then
+          filename=$(basename "$file")
+
+          # 如果 shared-lib 下没有才复制
+          test -f "$dest_shared/$filename" || cp -f "$file" "$dest_shared/"
+
+          # 写入 classpath 文件
+          echo "$filename" >> "$classpath_file"
+        fi
+      done
+    fi
+  done
+}
+
 # compile backend
 function compile_backend()
 {
@@ -425,8 +471,6 @@ function compile_backend()
 
   jars=`find $path/src/server -name sac*.jar -not -path "*/sac-common/*" -not -path "*/shared-lib/*"`
   cd $path
-  # 声明关联数组统计文件出现次数
-  declare -A file_counts
   declare -a sac_server_names=()
   # traverse each jar and move it to the corresponding location
   for jar in ${jars[@]}
@@ -440,46 +484,11 @@ function compile_backend()
         sac_server_names+=("$sac_server_name")
       fi
       cp -f $jar $SAC_BUILD_PATH/sac/lib/$sac_server_name.jar
-      dir="$path/src/server/$sac_server_name/shared-lib"
-      if [[ -d "$dir" ]]; then
-        # 仅处理普通文件（排除目录）
-        for file in "$dir"/*; do
-          if [[ -f "$file" ]]; then
-            filename=$(basename "$file")
-            ((file_counts["$filename"]++))
-          fi
-        done
-      fi
     fi
   done
 
 
-  for sac_server_name in "${sac_server_names[@]}"
-  do
-    dir="$path/src/server/$sac_server_name/shared-lib"
-    dest_shared="$SAC_BUILD_PATH/sac/lib/shared-lib"
-    dest_server="$SAC_BUILD_PATH/sac/lib/server-lib/$sac_server_name-lib"
-
-    # 创建目标目录（共享目录和服务子目录）
-    mkdir -p "$dest_shared" "$dest_server"
-
-    if [[ -d "$dir" ]]; then
-      # 处理当前服务的每个文件
-      for file in "$dir"/*; do
-        if [[ -f "$file" ]]; then
-          filename=$(basename "$file")
-          total_servers=${#sac_server_names[@]}
-
-          # 判断是否所有服务均有此文件
-          if [[ ${file_counts["$filename"]} -eq "$total_servers" ]]; then
-            cp -f "$file" "$dest_shared/"
-          else
-            cp -f "$file" "$dest_server/"
-          fi
-        fi
-      done
-    fi
-  done
+  process_shared_libs "${sac_server_names[@]}" server
 
   # java
   cp -r $JDK_X86_64_INSTALL_DIR/jre $SAC_BUILD_PATH/sac/lib/java/x86_64
@@ -490,13 +499,16 @@ function compile_backend()
 
   # tools
   # compile sac-deploy-tool
-  cp -f $path/src/tools/sac-deploy-tool/target/sac-deploy-tool.jar $SAC_BUILD_PATH/sac/tools/deployment/sac-deploy-tool.jar
+  cp -f $path/src/tools/sac-deploy-tool/target/sac-deploy-tool-exec.jar $SAC_BUILD_PATH/sac/tools/deployment/sac-deploy-tool.jar
 
   # compile sdb-ssh-tool
-  cp -f $path/src/tools/sdb-ssh-tool/target/sdb-ssh-tool.jar $SAC_BUILD_PATH/sac/tools/ssh/sdb-ssh-tool.jar
+  cp -f $path/src/tools/sdb-ssh-tool/target/sdb-ssh-tool-exec.jar $SAC_BUILD_PATH/sac/tools/ssh/sdb-ssh-tool.jar
 
   # compile sac-upgrade-tool
-  cp -f $path/src/tools/sac-upgrade-tool/target/sac-upgrade-tool.jar $SAC_BUILD_PATH/sac/tools/upgrade/sac-upgrade-tool.jar
+  cp -f $path/src/tools/sac-upgrade-tool/target/sac-upgrade-tool-exec.jar $SAC_BUILD_PATH/sac/tools/upgrade/sac-upgrade-tool.jar
+
+  tool_names=("sac-deploy-tool" "sdb-ssh-tool" "sac-upgrade-tool")
+  process_shared_libs "${tool_names[@]}" tools
 
   # compile sdb-dds-cc_<version>.tar.gz 解压到 tools/deployment/sdb-dds-cc/sdb-dds-cc
   tar --no-same-owner -xzf "$path/tools/dds-cc/sdb-dds-cc_"*.tar.gz -C "$SAC_BUILD_PATH/sac/tools/deployment/sdb-dds-cc" --strip-components=1
