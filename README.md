@@ -21,6 +21,19 @@ SAC is a distributed enterprise admin center based on the Spring Cloud micro-ser
 | node.js   | 14.0及以上  |
 | python    | 2.7及以上  |
 
+## 编译环境搭建
+sac-compile 项目需依赖 SAC 项目和 dds-backup-driver 项目完成编译打包，在编译打包前，按以下步骤搭建 sac-compile + SAC + dds-backup-driver 环境。
+```shell
+# 进入 sac-compile 项目
+cd sac-compile
+
+# 克隆 SAC 项目至 sac-compile 项目的 src 目录下
+git clone <SAC-git-url> src
+
+# 克隆 dds-backup-driver 项目至 sac-compile 项目的 lib/src/dds-backup-driver 目录下
+git clone <dds-backup-driver-git-url> lib/src/dds-backup-driver
+```
+
 ## 编译打包
 ```shell
 # 进入项目源码根目录，编译、打包项目
