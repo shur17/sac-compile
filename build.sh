@@ -6,7 +6,7 @@ JDK_AARCH64_FILE_NAME="OpenJDK8U-jdk_aarch64_linux_8u292b10.tar.gz"
 
 TMP_PATH="/tmp/sequoiasac"
 DOWNLOAD_PATH="$TMP_PATH/download"
-WEB_NODE_MODULES_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/web-node_modules-6.10.tar.gz"
+WEB_NODE_MODULES_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/web-node_modules-6.12.tar.gz"
 DDS_BACKUP_AGENT_URL="https://github.com/SequoiaDB/sdb-dependencies/releases/download/sac-dependencies/dds-backup-agent_1.4.2.tar.gz"
 
 # SAC 安装目录下的 conf 目录下要保存的文件
@@ -87,7 +87,7 @@ function check_frontend()
   
   if [ ! -d $path/src/web/node_modules ]; then
     echo "WARNING: Directory 'src/web/node_modules' does not exist, download from GitHub."
-    local downloadFile="${DOWNLOAD_PATH}/node_modules-6.10.tar.gz"
+    local downloadFile="${DOWNLOAD_PATH}/node_modules-6.12.tar.gz"
     if [ -e $downloadFile ]; then
       echo "INFO: ${downloadFile} is exist."
     else
