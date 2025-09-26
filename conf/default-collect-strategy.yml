@@ -78,8 +78,8 @@ sac:
 
     - name: "SQL_PERF_NODE_LOG"
       enable: true
-      interval: 30000
+      interval: 300000
 
     - name: "SDB_PERF_NODE_LOG"
       enable: true
-      interval: 30000
+      interval: 300000
