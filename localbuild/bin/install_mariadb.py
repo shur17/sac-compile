@@ -278,7 +278,7 @@ def deploy_mariadb(install_hosts, mariadb_group):
                 cmd = " echo '\nperformance-schema=ON\n" + \
                       "performance-schema-consumer-events-stages-current=ON\n" + \
                       "performance-schema-consumer-events-stages-history-long=ON\n" + \
-                      "slow-query-log=on\n" + \
+                      "slow-query-log=off\n" + \
                       "long-query-time=0' >> {}/database/{}/auto.cnf".format(install_path, node.get("port"))
                 ssh.cmd(cmd, True)
                 # 重启实例
