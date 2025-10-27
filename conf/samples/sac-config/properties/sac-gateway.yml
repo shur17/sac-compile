@@ -18,3 +18,11 @@ sac:
   filter:
     # 是否开启IP校验
     ipVerificationEnabled: true
+
+# 禁用 actuator
+management:
+  endpoints:
+    enabled-by-default: false
+    web:
+      exposure:
+        include: []
