@@ -47,3 +47,7 @@ sac:
     - name: "DDS_SERVICE_MONITOR"
       enable: true
       interval: 60000
+
+    - name: "DDS_PERF_NODE_LOG"
+      enable: true
+      interval: 300000
