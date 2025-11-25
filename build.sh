@@ -357,7 +357,9 @@ function clean()
 function rewrite()
 {
   type="SAC"
+  cd $path/src
   git_version=`git rev-parse HEAD`
+  cd $path
   build_time="`date +%Y-%m-%d-%H.%M.%S`"
   version_info=$(cat $path/VERSION.info)
   version_info=${version_info/\{type\}/$type}
