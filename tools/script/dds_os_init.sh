@@ -19,7 +19,8 @@ OS_KEY_KYLIN="Kylin Linux Advanced Server"
 OS_KEY_SUSE="SLES"  # SUSE Linux Enterprise Server
 OS_KEY_UBUNTU="Ubuntu"
 OS_KEY_OPENEULER="openEuler"
-OS_KEY_UOS="UOS Server 20"
+OS_KEY_UOS1="UOS Server 20"
+OS_KEY_UOS2="UnionTech OS Server 20"
 
 
 WRITE_LOG=true
@@ -46,7 +47,7 @@ function get_os_info() {
    fi
 
    case "$OS" in
-      ${OS_KEY_CENTOS} | ${OS_KEY_REDHAT} | ${OS_KEY_KYLIN} | ${OS_KEY_SUSE} | ${OS_KEY_UBUNTU} | ${OS_KEY_OPENEULER} | ${OS_KEY_UOS})
+      ${OS_KEY_CENTOS} | ${OS_KEY_REDHAT} | ${OS_KEY_KYLIN} | ${OS_KEY_SUSE} | ${OS_KEY_UBUNTU} | ${OS_KEY_OPENEULER} | ${OS_KEY_UOS1} | ${OS_KEY_UOS2} )
          echo -e "[INFO] Operating System: $OS $VER"
          ;;
       *)
@@ -59,7 +60,7 @@ function get_os_info() {
 function disable_firewall() {
    print_log "===Stop and disable firewall==="
    case "$OS" in
-      ${OS_KEY_CENTOS} | ${OS_KEY_REDHAT} | ${OS_KEY_KYLIN} | ${OS_KEY_OPENEULER} | ${OS_KEY_UOS})
+      ${OS_KEY_CENTOS} | ${OS_KEY_REDHAT} | ${OS_KEY_KYLIN} | ${OS_KEY_OPENEULER} | ${OS_KEY_UOS1} | ${OS_KEY_UOS2} )
          systemctl stop firewalld > /dev/null 2>&1
          systemctl disable firewalld > /dev/null 2>&1
          ;;
